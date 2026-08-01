@@ -102,6 +102,7 @@ const App = (() => {
     sessionStorage.setItem('marjitos_last_screen', id);
     document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
     document.getElementById(id).classList.add('active');
+    if (id === 'screen-landing') updateLandingInfo();
     if (id === 'screen-commissioner') {
       // Auto-set week from URL or latest saved week
       const urlData = parseURL();
@@ -176,6 +177,29 @@ const App = (() => {
       showScreen(lastScreen || 'screen-landing');
     } else if (lastScreen) {
       showScreen(lastScreen);
+    }
+  }
+
+  // --- Landing Info ---
+  function updateLandingInfo() {
+    const el = document.getElementById('active-week-info');
+    if (!el) return;
+    const urlData = parseURL();
+    let weekData;
+    if (urlData && urlData.matchups) {
+      weekData = urlData;
+    } else {
+      const weekKeys = Object.keys(state.weeks).sort((a, b) => b - a);
+      if (weekKeys.length > 0) weekData = state.weeks[weekKeys[0]];
+    }
+    if (weekData && weekData.matchups) {
+      let html = `<div style="text-align:center;margin-bottom:12px;padding:8px;border-radius:8px;background:rgba(0,200,150,0.06)">`;
+      html += `<div style="font-size:0.7rem;font-weight:700;color:var(--accent);letter-spacing:1px;margin-bottom:4px">WEEK ${weekData.week} ACTIVE</div>`;
+      html += weekData.matchups.map(m => `<span style="font-size:0.8rem;color:var(--text-dim)">${m.a} vs ${m.b}${m.isSuper ? ' ⭐' : ''}</span>`).join('<br>');
+      html += `</div>`;
+      el.innerHTML = html;
+    } else {
+      el.innerHTML = '';
     }
   }
 
@@ -392,14 +416,15 @@ const App = (() => {
     if (!name) { alert('Enter your name'); return; }
     currentPlayer = name;
 
-    const data = parseURL();
+    // Get week data: URL hash first (direct link), otherwise latest week from Firebase/state
+    const urlData = parseURL();
     let weekData;
-    if (!data || !data.matchups) {
-      const weekKeys = Object.keys(state.weeks).sort((a, b) => b - a);
-      if (weekKeys.length === 0) { alert('No matchups set up yet. Ask your commissioner for the link.'); return; }
-      weekData = state.weeks[weekKeys[0]];
+    if (urlData && urlData.matchups) {
+      weekData = urlData;
     } else {
-      weekData = data;
+      const weekKeys = Object.keys(state.weeks).sort((a, b) => b - a);
+      if (weekKeys.length === 0) { alert('No matchups set up yet. Check back soon.'); return; }
+      weekData = state.weeks[weekKeys[0]];
     }
 
     // Check Firebase directly for existing picks (most reliable)
