@@ -264,13 +264,26 @@ const App = (() => {
     if (!state.players[name]) state.players[name] = {};
 
     const data = parseURL();
+    let weekData;
     if (!data || !data.matchups) {
       const weekKeys = Object.keys(state.weeks).sort((a, b) => b - a);
       if (weekKeys.length === 0) { alert('No matchups set up yet. Ask your commissioner for the link.'); return; }
-      loadVotingScreen(state.weeks[weekKeys[0]]);
+      weekData = state.weeks[weekKeys[0]];
     } else {
-      loadVotingScreen(data);
+      weekData = data;
     }
+
+    // Check if player already locked in picks for this week
+    const existing = state.players[name][weekData.week];
+    if (existing && existing.picks && Object.keys(existing.picks).length > 0) {
+      // Restore their picks for the confirmation view
+      currentPicks = { ...existing.picks };
+      tiebreakerScore = existing.tiebreaker || '';
+      renderConfirmation(weekData);
+      return;
+    }
+
+    loadVotingScreen(weekData);
   }
 
   function loadVotingScreen(data) {
@@ -361,7 +374,57 @@ const App = (() => {
       container.appendChild(tb);
     }
 
+    // League pick counter with percentage breakdown
+    renderPickCounter(data);
+
     showScreen('screen-confirm');
+  }
+
+  function renderPickCounter(data) {
+    const week = data.week;
+    const allPlayers = Object.keys(state.players);
+    const pickedPlayers = allPlayers.filter(p => {
+      const pw = state.players[p][week];
+      return pw && pw.picks && Object.keys(pw.picks).length > 0;
+    });
+
+    let counterHtml = `<div class="pick-counter">`;
+    counterHtml += `<div class="pick-counter-header">${pickedPlayers.length} of ${allPlayers.length} picks locked</div>`;
+
+    // Per-matchup breakdown
+    data.matchups.forEach((m, i) => {
+      let aCount = 0, bCount = 0;
+      pickedPlayers.forEach(p => {
+        const pick = (state.players[p][week].picks || {})[i];
+        if (pick === 'a') aCount++;
+        else if (pick === 'b') bCount++;
+      });
+      const total = aCount + bCount;
+      const aPct = total ? Math.round((aCount / total) * 100) : 0;
+      const bPct = total ? Math.round((bCount / total) * 100) : 0;
+
+      counterHtml += `<div class="pick-breakdown${m.isSuper ? ' breakdown-super' : ''}">`;
+      counterHtml += `<div class="breakdown-bar">`;
+      counterHtml += `<div class="bar-a" style="width:${aPct}%"></div>`;
+      counterHtml += `<div class="bar-b" style="width:${bPct}%"></div>`;
+      counterHtml += `</div>`;
+      counterHtml += `<div class="breakdown-labels">`;
+      counterHtml += `<span class="bl-team">${m.a} <strong>${aPct}%</strong></span>`;
+      counterHtml += `<span class="bl-vs">${m.isSuper ? 'SUPER' : 'vs'}</span>`;
+      counterHtml += `<span class="bl-team"><strong>${bPct}%</strong> ${m.b}</span>`;
+      counterHtml += `</div></div>`;
+    });
+
+    counterHtml += `</div>`;
+
+    // Inject into confirm screen
+    let counterEl = document.getElementById('pick-counter-wrap');
+    if (!counterEl) {
+      counterEl = document.createElement('div');
+      counterEl.id = 'pick-counter-wrap';
+      document.getElementById('pick-card').after(counterEl);
+    }
+    counterEl.innerHTML = counterHtml;
   }
 
   // --- Results Entry ---
