@@ -168,6 +168,33 @@ const App = (() => {
     const container = document.getElementById('matchup-setups');
     container.innerHTML = '';
 
+    const weekEl = document.getElementById('comm-week');
+    const week = parseInt(weekEl.value) || 1;
+    const existingWeek = state.weeks[week];
+
+    // If this week already has matchups, show them + the link
+    if (existingWeek && existingWeek.matchups && existingWeek.matchups.length > 0) {
+      let html = '<div class="divider-text">week ' + week + ' matchups set</div>';
+      existingWeek.matchups.forEach((m, i) => {
+        const label = m.isSuper ? 'SUPER' : `Matchup ${i + 1}`;
+        html += `<div class="live-pick-row"><span class="live-pick-name">${label}</span><span class="live-pick-teams">${m.a} vs ${m.b}</span></div>`;
+      });
+      html += `<p style="font-size:0.75rem;color:var(--text-dim);text-align:center;margin-top:12px">Change week number above to set up a different week, or tap below to re-pick.</p>`;
+      html += `<button class="btn ghost" style="margin-top:8px" onclick="App.resetWeekSetup()">Re-pick Matchups</button>`;
+      container.innerHTML = html;
+
+      // Show share link automatically
+      const hash = encodeHash(existingWeek);
+      const url = window.location.origin + window.location.pathname + '#' + hash;
+      document.getElementById('share-link').value = url;
+      document.getElementById('share-link-box').classList.remove('hidden');
+      window.location.hash = hash;
+
+      updateLiveFeed();
+      return;
+    }
+
+    // Fresh setup — show preset picker
     const pickerHeader = document.createElement('div');
     pickerHeader.innerHTML = `
       <div class="matchup-label regular" style="margin-bottom:4px">Pick 3 matchups (tap to select)</div>
@@ -222,6 +249,21 @@ const App = (() => {
         </div>
       </div>`;
     container.appendChild(manual);
+
+    // Hide share link box until generated
+    document.getElementById('share-link-box').classList.add('hidden');
+  }
+
+  function resetWeekSetup() {
+    const week = parseInt(document.getElementById('comm-week').value) || 1;
+    delete state.weeks[week];
+    save();
+    document.getElementById('share-link-box').classList.add('hidden');
+    initCommissioner();
+  }
+
+  function onCommWeekChange() {
+    initCommissioner();
   }
 
   function togglePreset(idx) {
@@ -946,6 +988,6 @@ const App = (() => {
     loadResultsWeek, addPlayerForWeek, saveResults,
     togglePreset, exportData, downloadMyPicks,
     triggerImport, handleImport, importFullData, handleFullImport,
-    showAllPicks, renderAllPicks
+    showAllPicks, renderAllPicks, resetWeekSetup, onCommWeekChange
   };
 })();

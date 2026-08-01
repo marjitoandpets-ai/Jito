@@ -29,7 +29,7 @@
       <div class="card glass">
         <h2>Set Up This Week</h2>
         <label>Week Number</label>
-        <input type="number" id="comm-week" min="1" max="18" value="1">
+        <input type="number" id="comm-week" min="1" max="18" value="1" onchange="App.onCommWeekChange()">
 
         <div class="matchup-setup" id="matchup-setups"></div>
         <button class="btn primary" onclick="App.generateLink()">Generate Shareable Link</button>
