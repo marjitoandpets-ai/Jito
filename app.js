@@ -1,5 +1,5 @@
 const App = (() => {
-  const STORAGE_KEY = 'mojitos_madness';
+  const STORAGE_KEY = 'marjitos_madness';
   let state = loadState();
   let currentPicks = {};
   let currentPlayer = '';
@@ -560,7 +560,7 @@ const App = (() => {
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = 'mojitos-madness-data.json';
+    a.download = 'marjitos-madness-data.json';
     a.click();
     URL.revokeObjectURL(url);
   }
@@ -571,7 +571,7 @@ const App = (() => {
     if (!data) return;
     const week = data.week;
     const pickData = {
-      _type: 'mojito-madness-pick',
+      _type: 'marjito-madness-pick',
       player: currentPlayer,
       week: week,
       picks: { ...currentPicks },
@@ -607,7 +607,7 @@ const App = (() => {
       reader.onload = (e) => {
         try {
           const d = JSON.parse(e.target.result);
-          if ((d._type === 'mojito-madness-pick' || d._type === 'gridiron-pick') && d.player && d.week && d.picks) {
+          if ((d._type === 'marjito-madness-pick' || d._type === 'gridiron-pick') && d.player && d.week && d.picks) {
             if (!state.players[d.player]) state.players[d.player] = {};
             state.players[d.player][d.week] = {
               picks: d.picks,
