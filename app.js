@@ -102,7 +102,19 @@ const App = (() => {
   function showScreen(id) {
     document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
     document.getElementById(id).classList.add('active');
-    if (id === 'screen-commissioner') { initCommissioner(); updateLiveFeed(); }
+    if (id === 'screen-commissioner') {
+      // Auto-set week from URL or latest saved week
+      const urlData = parseURL();
+      const weekEl = document.getElementById('comm-week');
+      if (urlData && urlData.week) {
+        weekEl.value = urlData.week;
+      } else {
+        const savedWeeks = Object.keys(state.weeks).sort((a, b) => b - a);
+        if (savedWeeks.length > 0) weekEl.value = savedWeeks[0];
+      }
+      initCommissioner();
+      updateLiveFeed();
+    }
     if (id === 'screen-leaderboard') renderLeaderboard();
     if (id === 'screen-results') loadResultsWeek();
     if (id === 'screen-dashboard') renderDashboard();
@@ -172,18 +184,20 @@ const App = (() => {
     const week = parseInt(weekEl.value) || 1;
     const existingWeek = state.weeks[week];
 
-    // If this week already has matchups, show them + the link
+    // If this week already has matchups, show locked view
     if (existingWeek && existingWeek.matchups && existingWeek.matchups.length > 0) {
-      let html = '<div class="divider-text">week ' + week + ' matchups set</div>';
+      let html = '<div class="divider-text">week ' + week + ' matchups locked</div>';
       existingWeek.matchups.forEach((m, i) => {
         const label = m.isSuper ? 'SUPER' : `Matchup ${i + 1}`;
         html += `<div class="live-pick-row"><span class="live-pick-name">${label}</span><span class="live-pick-teams">${m.a} vs ${m.b}</span></div>`;
       });
-      html += `<p style="font-size:0.75rem;color:var(--text-dim);text-align:center;margin-top:12px">Change week number above to set up a different week, or tap below to re-pick.</p>`;
-      html += `<button class="btn ghost" style="margin-top:8px" onclick="App.resetWeekSetup()">Re-pick Matchups</button>`;
+      html += `<div style="display:flex;gap:8px;margin-top:12px">`;
+      html += `<button class="btn ghost" style="flex:1" onclick="App.editWeekSetup()">Edit Week ${week}</button>`;
+      html += `<button class="btn secondary" style="flex:1" onclick="App.nextWeek()">+ Next Week</button>`;
+      html += `</div>`;
       container.innerHTML = html;
 
-      // Show share link automatically
+      // Show share link
       const hash = encodeHash(existingWeek);
       const url = window.location.origin + window.location.pathname + '#' + hash;
       document.getElementById('share-link').value = url;
@@ -195,6 +209,14 @@ const App = (() => {
     }
 
     // Fresh setup — show preset picker
+    renderMatchupPicker();
+    document.getElementById('share-link-box').classList.add('hidden');
+  }
+
+  function renderMatchupPicker() {
+    const container = document.getElementById('matchup-setups');
+    container.innerHTML = '';
+
     const pickerHeader = document.createElement('div');
     pickerHeader.innerHTML = `
       <div class="matchup-label regular" style="margin-bottom:4px">Pick 3 matchups (tap to select)</div>
@@ -249,17 +271,27 @@ const App = (() => {
         </div>
       </div>`;
     container.appendChild(manual);
-
-    // Hide share link box until generated
-    document.getElementById('share-link-box').classList.add('hidden');
   }
 
-  function resetWeekSetup() {
+  function editWeekSetup() {
+    // Unlock the current week for re-editing
     const week = parseInt(document.getElementById('comm-week').value) || 1;
     delete state.weeks[week];
     save();
     document.getElementById('share-link-box').classList.add('hidden');
+    renderMatchupPicker();
+  }
+
+  function nextWeek() {
+    // Advance to the next week number and show setup
+    const weekEl = document.getElementById('comm-week');
+    const current = parseInt(weekEl.value) || 1;
+    weekEl.value = current + 1;
     initCommissioner();
+  }
+
+  function resetWeekSetup() {
+    editWeekSetup();
   }
 
   function onCommWeekChange() {
@@ -1010,6 +1042,7 @@ const App = (() => {
     loadResultsWeek, addPlayerForWeek, saveResults,
     togglePreset, exportData, downloadMyPicks,
     triggerImport, handleImport, importFullData, handleFullImport,
-    showAllPicks, renderAllPicks, resetWeekSetup, onCommWeekChange
+    showAllPicks, renderAllPicks, resetWeekSetup, onCommWeekChange,
+    editWeekSetup, nextWeek
   };
 })();
