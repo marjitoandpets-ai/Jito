@@ -1,5 +1,5 @@
 const App = (() => {
-  const STORAGE_KEY = 'gridiron_picks';
+  const STORAGE_KEY = 'mojitos_madness';
   let state = loadState();
   let currentPicks = {};
   let currentPlayer = '';
@@ -560,7 +560,7 @@ const App = (() => {
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = 'gridiron-picks-data.json';
+    a.download = 'mojitos-madness-data.json';
     a.click();
     URL.revokeObjectURL(url);
   }
@@ -571,7 +571,7 @@ const App = (() => {
     if (!data) return;
     const week = data.week;
     const pickData = {
-      _type: 'gridiron-pick',
+      _type: 'mojito-madness-pick',
       player: currentPlayer,
       week: week,
       picks: { ...currentPicks },
@@ -585,7 +585,7 @@ const App = (() => {
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = `picks-${currentPlayer.toLowerCase().replace(/\s+/g, '-')}-wk${week}.json`;
+    a.download = `madness-${currentPlayer.toLowerCase().replace(/\s+/g, '-')}-wk${week}.json`;
     a.click();
     URL.revokeObjectURL(url);
   }
@@ -607,7 +607,7 @@ const App = (() => {
       reader.onload = (e) => {
         try {
           const d = JSON.parse(e.target.result);
-          if (d._type === 'gridiron-pick' && d.player && d.week && d.picks) {
+          if ((d._type === 'mojito-madness-pick' || d._type === 'gridiron-pick') && d.player && d.week && d.picks) {
             if (!state.players[d.player]) state.players[d.player] = {};
             state.players[d.player][d.week] = {
               picks: d.picks,
