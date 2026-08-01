@@ -117,6 +117,7 @@ const App = (() => {
       updateLiveFeed();
     }
     if (id === 'screen-leaderboard') renderLeaderboard();
+    if (id === 'screen-my-stats') renderMyStats();
     if (id === 'screen-results') loadResultsWeek();
     if (id === 'screen-dashboard') renderDashboard();
     if (id === 'screen-all-picks') renderAllPicks();
@@ -951,6 +952,85 @@ const App = (() => {
 
     if (players.length === 0) {
       html = '<p style="color:var(--text-dim);text-align:center">No players have entered yet</p>';
+    }
+
+    container.innerHTML = html;
+  }
+
+  // --- Player Stats ---
+  function renderMyStats() {
+    const name = currentPlayer;
+    if (!name) { showScreen('screen-landing'); return; }
+
+    document.getElementById('my-stats-name').textContent = `${name}'s Record`;
+    const container = document.getElementById('my-stats-content');
+    const playerData = state.players[name];
+    if (!playerData) { container.innerHTML = '<p style="color:var(--text-dim)">No picks recorded yet</p>'; return; }
+
+    const { totals, byWeek, weeks, players } = calcScores();
+    const myTotal = totals[name] || 0;
+    const sorted = Object.entries(totals).sort((a, b) => b[1] - a[1]);
+    const rank = sorted.findIndex(([n]) => n === name) + 1;
+
+    let correct = 0, total = 0;
+    weeks.forEach(week => {
+      const wd = state.weeks[week];
+      const wr = state.results[week] || {};
+      const pw = playerData[week];
+      if (!wd || !pw || !pw.picks) return;
+      wd.matchups.forEach((m, i) => {
+        if (wr[i]) {
+          total++;
+          if (pw.picks[i] === wr[i]) correct++;
+        }
+      });
+    });
+    const pct = total > 0 ? Math.round((correct / total) * 100) : 0;
+
+    let html = '';
+    // Summary card
+    html += `<div style="display:flex;gap:12px;margin-bottom:16px">`;
+    html += `<div class="stat-box"><div class="stat-num">${myTotal}</div><div class="stat-label">Points</div></div>`;
+    html += `<div class="stat-box"><div class="stat-num">#${rank || '—'}</div><div class="stat-label">Rank</div></div>`;
+    html += `<div class="stat-box"><div class="stat-num">${pct}%</div><div class="stat-label">Accuracy</div></div>`;
+    html += `</div>`;
+
+    // Week-by-week breakdown
+    html += '<div class="divider-text">week by week</div>';
+    weeks.forEach(week => {
+      const wd = state.weeks[week];
+      const wr = state.results[week] || {};
+      const pw = playerData[week];
+      if (!wd || !pw || !pw.picks) return;
+
+      const wPts = (byWeek[week] || {})[name] || 0;
+      html += `<div style="margin-bottom:8px;padding:8px;border-radius:8px;background:rgba(255,255,255,0.03)">`;
+      html += `<div style="display:flex;justify-content:space-between;margin-bottom:4px"><span style="font-weight:700;font-size:0.85rem">Week ${week}</span><span class="pointed">${wPts} pts</span></div>`;
+
+      wd.matchups.forEach((m, i) => {
+        const pick = pw.picks[i];
+        const pickName = pick === 'a' ? m.a : pick === 'b' ? m.b : '?';
+        const winner = wr[i];
+        let cls = 'pick-pending';
+        let icon = '⏳';
+        if (winner) {
+          if (pick === winner) { cls = 'pick-correct'; icon = '✓'; }
+          else { cls = 'pick-wrong'; icon = '✗'; }
+        }
+        html += `<div style="font-size:0.8rem;padding:2px 0"><span class="${cls}">${icon} ${pickName}</span>`;
+        html += `<span style="color:var(--text-dim)"> — ${m.a} vs ${m.b}${m.isSuper ? ' ⭐' : ''}</span></div>`;
+      });
+      html += `</div>`;
+    });
+
+    // vs the field
+    if (sorted.length > 1) {
+      html += '<div class="divider-text">vs the field</div>';
+      sorted.slice(0, 5).forEach(([n, pts], i) => {
+        const isMe = n === name;
+        html += `<div style="display:flex;justify-content:space-between;padding:4px 8px;font-size:0.85rem;${isMe ? 'font-weight:700;color:var(--accent)' : ''}">`;
+        html += `<span>${i + 1}. ${n}${isMe ? ' (you)' : ''}</span><span>${pts} pts</span></div>`;
+      });
     }
 
     container.innerHTML = html;

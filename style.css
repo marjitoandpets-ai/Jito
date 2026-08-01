@@ -315,3 +315,11 @@ label { display: block; font-size: 0.8rem; color: var(--text-dim); margin-bottom
   background: rgba(255,215,0,0.1); color: var(--super); border-color: rgba(255,215,0,0.3);
 }
 .all-pick-tb { font-size: 0.75rem; color: var(--text-dim); margin-top: 6px; }
+
+/* Player stat boxes */
+.stat-box {
+  flex: 1; text-align: center; padding: 12px 8px; border-radius: 10px;
+  background: rgba(255,255,255,0.04); border: 1px solid var(--card-border);
+}
+.stat-num { font-size: 1.3rem; font-weight: 800; color: var(--accent); }
+.stat-label { font-size: 0.65rem; color: var(--text-dim); text-transform: uppercase; letter-spacing: 1px; margin-top: 2px; }

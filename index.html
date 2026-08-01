@@ -78,9 +78,19 @@
         </div>
         <div id="confirm-picks"></div>
       </div>
-      <button class="btn primary" onclick="App.downloadMyPicks()">Download My Picks</button>
-      <p class="hint">Download and send to your commish, or screenshot and share</p>
-      <button class="btn secondary" onclick="App.showScreen('screen-leaderboard')">View Leaderboard</button>
+      <button class="btn secondary" onclick="App.showScreen('screen-my-stats')">My Stats & Record</button>
+      <button class="btn secondary" onclick="App.showScreen('screen-leaderboard')">Leaderboard</button>
+      <button class="btn ghost" onclick="App.downloadMyPicks()">Download My Picks</button>
+    </div>
+
+    <!-- Player Stats Screen -->
+    <div id="screen-my-stats" class="screen">
+      <div class="card glass">
+        <h2 id="my-stats-name">My Record</h2>
+        <div id="my-stats-content"></div>
+        <button class="btn secondary" onclick="App.showScreen('screen-leaderboard')">Full Leaderboard</button>
+        <button class="btn ghost" onclick="App.showScreen('screen-confirm')">Back</button>
+      </div>
     </div>
 
     <!-- Results Entry (Commissioner) -->
@@ -152,6 +162,6 @@
 
   <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-database-compat.js"></script>
-  <script src="./app.js?v=9"></script>
+  <script src="./app.js?v=10"></script>
 </body>
 </html>
