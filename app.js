@@ -77,9 +77,8 @@ const App = (() => {
           if (id === 'screen-dashboard') renderDashboard();
           if (id === 'screen-leaderboard') renderLeaderboard();
           if (id === 'screen-results') loadResultsWeek();
-          if (id === 'screen-commissioner') updateLiveFeed();
+          if (id === 'screen-commissioner') { initCommissioner(); updateLiveFeed(); }
           if (id === 'screen-all-picks') renderAllPicks();
-          // Update pick counter if on confirm screen
           if (id === 'screen-confirm') {
             const data = parseURL() || state.weeks[Object.keys(state.weeks).sort((a, b) => b - a)[0]];
             if (data) renderPickCounter(data);
