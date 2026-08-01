@@ -170,6 +170,14 @@ const App = (() => {
     // Restore last screen from sessionStorage
     const lastScreen = sessionStorage.getItem('marjitos_last_screen');
 
+    // Remember player name across sessions
+    const savedName = localStorage.getItem('marjitos_player_name');
+    if (savedName) {
+      currentPlayer = savedName;
+      const nameInput = document.getElementById('player-name');
+      if (nameInput) nameInput.value = savedName;
+    }
+
     initFirebase();
     const data = parseURL();
     if (data && data.matchups) {
@@ -416,6 +424,7 @@ const App = (() => {
     const name = document.getElementById('player-name').value.trim();
     if (!name) { alert('Enter your name'); return; }
     currentPlayer = name;
+    localStorage.setItem('marjitos_player_name', name);
 
     // Get week data: URL hash first (direct link), otherwise latest week from Firebase/state
     const urlData = parseURL();
@@ -927,7 +936,10 @@ const App = (() => {
       pickedPlayers.forEach(p => {
         const pw = state.players[p][week];
         html += '<div class="all-pick-card">';
+        html += `<div style="display:flex;justify-content:space-between;align-items:center">`;
         html += `<div class="all-pick-name">${p}</div>`;
+        html += `<button class="btn ghost" style="width:auto;padding:2px 8px;font-size:0.7rem;margin:0;color:var(--danger)" onclick="App.resetPlayerPicks('${p.replace(/'/g, "\\'")}',${week})">Reset</button>`;
+        html += `</div>`;
         html += '<div class="all-pick-choices">';
         weekData.matchups.forEach((m, i) => {
           const pick = (pw.picks || {})[i];
@@ -955,6 +967,15 @@ const App = (() => {
     }
 
     container.innerHTML = html;
+  }
+
+  function resetPlayerPicks(playerName, week) {
+    if (!confirm(`Reset ${playerName}'s picks for Week ${week}? They'll be able to vote again.`)) return;
+    if (state.players[playerName] && state.players[playerName][week]) {
+      delete state.players[playerName][week];
+      save();
+      renderAllPicks();
+    }
   }
 
   // --- Player Stats ---
@@ -1153,6 +1174,6 @@ const App = (() => {
     togglePreset, exportData, downloadMyPicks,
     triggerImport, handleImport, importFullData, handleFullImport,
     showAllPicks, renderAllPicks, resetWeekSetup, onCommWeekChange,
-    editWeekSetup, nextWeek
+    editWeekSetup, nextWeek, resetPlayerPicks
   };
 })();
