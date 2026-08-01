@@ -1,10 +1,25 @@
+// --- Firebase Init ---
+const firebaseConfig = {
+  apiKey: "AIzaSyCdB3Q-i_nkT2p4n4GK4OgP05EDhOKvIT4",
+  authDomain: "marjitosmatchupmadness.firebaseapp.com",
+  databaseURL: "https://marjitosmatchupmadness-default-rtdb.firebaseio.com",
+  projectId: "marjitosmatchupmadness",
+  storageBucket: "marjitosmatchupmadness.firebasestorage.app",
+  messagingSenderId: "559034424876",
+  appId: "1:559034424876:web:8140f85b5c98b48d2ffb89",
+  measurementId: "G-LCYNDGW2X9"
+};
+firebase.initializeApp(firebaseConfig);
+const db = firebase.database();
+
 const App = (() => {
   const STORAGE_KEY = 'marjitos_madness';
   let state = loadState();
   let currentPicks = {};
   let currentPlayer = '';
   let tiebreakerScore = '';
-  let selectedPresets = []; // indexes into PRESETS
+  let selectedPresets = [];
+  let firebaseReady = false;
 
   // NFL team code <-> display name mapping
   const TEAMS = {
@@ -18,7 +33,7 @@ const App = (() => {
   };
   const NAME_TO_CODE = Object.fromEntries(Object.entries(TEAMS).map(([k,v]) => [v,k]));
 
-  // Week 1 2026 — top 5 by spread (tightest = best for voting)
+  // Week 1 2026 presets
   const PRESETS = [
     { a: 'Bills', b: 'Texans', spread: '1.5', tag: 'AFC Heavyweights', prime: null },
     { a: 'Packers', b: 'Vikings', spread: '1.5', tag: 'NFC North Rivalry', prime: null },
@@ -27,6 +42,7 @@ const App = (() => {
     { a: 'Broncos', b: 'Chiefs', spread: '2.5', tag: 'AFC West', prime: 'MNF' },
   ];
 
+  // --- State Management ---
   function loadState() {
     try { return JSON.parse(localStorage.getItem(STORAGE_KEY)) || defaultState(); }
     catch { return defaultState(); }
@@ -34,8 +50,53 @@ const App = (() => {
   function defaultState() {
     return { players: {}, weeks: {}, results: {} };
   }
-  function save() { localStorage.setItem(STORAGE_KEY, JSON.stringify(state)); }
+  function saveLocal() { localStorage.setItem(STORAGE_KEY, JSON.stringify(state)); }
 
+  function save() {
+    saveLocal();
+    // Push to Firebase
+    db.ref('state').set(state).catch(err => console.warn('Firebase write failed:', err));
+  }
+
+  // --- Firebase Real-time Listener ---
+  function initFirebase() {
+    db.ref('state').on('value', (snapshot) => {
+      const remote = snapshot.val();
+      if (remote) {
+        state = {
+          players: remote.players || {},
+          weeks: remote.weeks || {},
+          results: remote.results || {}
+        };
+        saveLocal();
+        firebaseReady = true;
+        // Refresh current screen if dashboard/leaderboard is showing
+        const activeScreen = document.querySelector('.screen.active');
+        if (activeScreen) {
+          const id = activeScreen.id;
+          if (id === 'screen-dashboard') renderDashboard();
+          if (id === 'screen-leaderboard') renderLeaderboard();
+          if (id === 'screen-results') loadResultsWeek();
+          // Update pick counter if on confirm screen
+          if (id === 'screen-confirm') {
+            const data = parseURL() || state.weeks[Object.keys(state.weeks).sort((a, b) => b - a)[0]];
+            if (data) renderPickCounter(data);
+          }
+        }
+      } else {
+        // First time — push local state to Firebase
+        firebaseReady = true;
+        if (Object.keys(state.weeks).length > 0 || Object.keys(state.players).length > 0) {
+          db.ref('state').set(state);
+        }
+      }
+    }, (err) => {
+      console.warn('Firebase read failed, using local storage:', err);
+      firebaseReady = true;
+    });
+  }
+
+  // --- Screen Navigation ---
   function showScreen(id) {
     document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
     document.getElementById(id).classList.add('active');
@@ -46,8 +107,6 @@ const App = (() => {
   }
 
   // --- URL Hash Encoding ---
-  // Format: #1-BUF.HOU-GB.MIN-DAL.NYG!
-  // week number, then matchups separated by -, teams by dot, ! suffix = super
   function encodeHash(data) {
     let h = data.week.toString();
     data.matchups.forEach(m => {
@@ -81,7 +140,6 @@ const App = (() => {
   }
 
   function parseURL() {
-    // Try new hash format first, fall back to legacy query param
     const hashData = decodeHash(window.location.hash);
     if (hashData) return hashData;
     const params = new URLSearchParams(window.location.search);
@@ -92,11 +150,11 @@ const App = (() => {
   }
 
   function init() {
+    initFirebase();
     const data = parseURL();
     if (data && data.matchups) {
       state.weeks[data.week] = data;
       save();
-      // If someone opens a matchup link, go straight to landing (voting flow)
       showScreen('screen-landing');
     }
   }
@@ -107,7 +165,6 @@ const App = (() => {
     const container = document.getElementById('matchup-setups');
     container.innerHTML = '';
 
-    // Preset picker header
     const pickerHeader = document.createElement('div');
     pickerHeader.innerHTML = `
       <div class="matchup-label regular" style="margin-bottom:4px">Pick 3 matchups (tap to select)</div>
@@ -116,7 +173,6 @@ const App = (() => {
       </p>`;
     container.appendChild(pickerHeader);
 
-    // Render preset cards
     PRESETS.forEach((p, i) => {
       const card = document.createElement('div');
       card.className = 'preset-card';
@@ -135,7 +191,6 @@ const App = (() => {
       container.appendChild(card);
     });
 
-    // Manual entry fallback (for custom matchups / future weeks)
     const manual = document.createElement('div');
     manual.innerHTML = `
       <div class="divider-text" style="margin-top:16px">or type custom matchups</div>
@@ -173,7 +228,6 @@ const App = (() => {
     } else if (selectedPresets.length < 3) {
       selectedPresets.push(idx);
     }
-    // Update visual state
     PRESETS.forEach((_, i) => {
       const card = document.getElementById(`preset-${i}`);
       const slot = document.getElementById(`preset-slot-${i}`);
@@ -187,7 +241,6 @@ const App = (() => {
         slot.style.color = isSuper ? 'var(--super)' : 'var(--accent)';
       }
     });
-    // Sync manual fields with preset selections
     for (let si = 0; si < 3; si++) {
       const aEl = document.getElementById(`team-${si}-a`);
       const bEl = document.getElementById(`team-${si}-b`);
@@ -208,7 +261,6 @@ const App = (() => {
     const week = parseInt(document.getElementById('comm-week').value) || 1;
     let matchups = [];
 
-    // Try presets first
     if (selectedPresets.length === 3) {
       matchups = selectedPresets.map((pi, si) => ({
         a: PRESETS[pi].a,
@@ -216,7 +268,6 @@ const App = (() => {
         isSuper: si === 2
       }));
     } else {
-      // Fall back to manual entry
       for (let i = 0; i < 3; i++) {
         const a = (document.getElementById(`team-${i}-a`) || {}).value || '';
         const b = (document.getElementById(`team-${i}-b`) || {}).value || '';
@@ -236,8 +287,6 @@ const App = (() => {
     const url = window.location.origin + window.location.pathname + '#' + hash;
     document.getElementById('share-link').value = url;
     document.getElementById('share-link-box').classList.remove('hidden');
-
-    // Set the hash on the current page so voting flow can find the matchups
     window.location.hash = hash;
   }
 
@@ -252,7 +301,6 @@ const App = (() => {
   }
 
   function commishMakePicks() {
-    // Let the commissioner jump straight to voting after generating the link
     showScreen('screen-landing');
   }
 
@@ -274,9 +322,8 @@ const App = (() => {
     }
 
     // Check if player already locked in picks for this week
-    const existing = state.players[name][weekData.week];
+    const existing = state.players[name] && state.players[name][weekData.week];
     if (existing && existing.picks && Object.keys(existing.picks).length > 0) {
-      // Restore their picks for the confirmation view
       currentPicks = { ...existing.picks };
       tiebreakerScore = existing.tiebreaker || '';
       renderConfirmation(weekData);
@@ -374,9 +421,7 @@ const App = (() => {
       container.appendChild(tb);
     }
 
-    // League pick counter with percentage breakdown
     renderPickCounter(data);
-
     showScreen('screen-confirm');
   }
 
@@ -384,14 +429,13 @@ const App = (() => {
     const week = data.week;
     const allPlayers = Object.keys(state.players);
     const pickedPlayers = allPlayers.filter(p => {
-      const pw = state.players[p][week];
+      const pw = state.players[p] && state.players[p][week];
       return pw && pw.picks && Object.keys(pw.picks).length > 0;
     });
 
     let counterHtml = `<div class="pick-counter">`;
     counterHtml += `<div class="pick-counter-header">${pickedPlayers.length} of ${allPlayers.length} picks locked</div>`;
 
-    // Per-matchup breakdown
     data.matchups.forEach((m, i) => {
       let aCount = 0, bCount = 0;
       pickedPlayers.forEach(p => {
@@ -417,7 +461,6 @@ const App = (() => {
 
     counterHtml += `</div>`;
 
-    // Inject into confirm screen
     let counterEl = document.getElementById('pick-counter-wrap');
     if (!counterEl) {
       counterEl = document.createElement('div');
@@ -452,7 +495,6 @@ const App = (() => {
       mContainer.appendChild(row);
     });
 
-    // Player pick recording
     const players = Object.keys(state.players);
     if (players.length === 0) {
       pContainer.innerHTML = '<p style="color:var(--text-dim)">No players yet</p>';
@@ -468,7 +510,7 @@ const App = (() => {
       </div>`;
 
     players.forEach(p => {
-      const pData = state.players[p][week] || {};
+      const pData = (state.players[p] && state.players[p][week]) || {};
       const div = document.createElement('div');
       div.style.cssText = 'margin-bottom:8px;padding:8px;border-radius:8px;background:rgba(255,255,255,0.03)';
       let picksHtml = `<strong>${p}</strong><br>`;
@@ -507,7 +549,6 @@ const App = (() => {
       if (val) state.results[week][i] = val;
     });
 
-    // Save player picks from commissioner entry
     Object.keys(state.players).forEach(p => {
       data.matchups.forEach((m, i) => {
         const el = document.getElementById(`ppick-${p}-${i}`);
@@ -533,7 +574,7 @@ const App = (() => {
       if (!weekData) return;
 
       Object.keys(state.players).forEach(p => {
-        const pWeek = state.players[p][week];
+        const pWeek = state.players[p] && state.players[p][week];
         if (!pWeek || !pWeek.picks) return;
 
         weekData.matchups.forEach((m, i) => {
@@ -563,11 +604,11 @@ const App = (() => {
     container.innerHTML = html;
   }
 
-  // --- Scoring helper (shared by leaderboard + dashboard) ---
+  // --- Scoring helper ---
   function calcScores() {
     const players = Object.keys(state.players);
     const totals = {};
-    const byWeek = {}; // { week: { player: pts } }
+    const byWeek = {};
     players.forEach(p => { totals[p] = 0; });
 
     const weeks = Object.keys(state.weeks).sort((a, b) => a - b);
@@ -578,7 +619,7 @@ const App = (() => {
       byWeek[week] = {};
       players.forEach(p => {
         let pts = 0;
-        const pWeek = state.players[p][week];
+        const pWeek = state.players[p] && state.players[p][week];
         if (pWeek && pWeek.picks) {
           weekData.matchups.forEach((m, i) => {
             const winner = weekResults[i];
@@ -598,7 +639,6 @@ const App = (() => {
     const { totals, byWeek, weeks, players } = calcScores();
     const sorted = Object.entries(totals).sort((a, b) => b[1] - a[1]);
 
-    // --- Standings table with per-week breakdown ---
     const standingsEl = document.getElementById('dash-standings');
     if (sorted.length === 0) {
       standingsEl.innerHTML = '<p style="color:var(--text-dim)">No players yet</p>';
@@ -621,7 +661,6 @@ const App = (() => {
       standingsEl.innerHTML = h;
     }
 
-    // --- Week-by-week history ---
     const historyEl = document.getElementById('dash-history');
     if (weeks.length === 0) {
       historyEl.innerHTML = '<p style="color:var(--text-dim)">No weeks recorded yet</p>';
@@ -643,7 +682,6 @@ const App = (() => {
       hHtml += `<button class="btn ghost" style="padding:4px 8px;font-size:0.75rem;width:auto;margin:0" onclick="document.getElementById('results-week').value=${week};App.showScreen('screen-results')">Edit</button>`;
       hHtml += `</div>`;
 
-      // Matchups + results
       wd.matchups.forEach((m, i) => {
         const winner = wr[i];
         const winName = winner === 'a' ? m.a : winner === 'b' ? m.b : null;
@@ -659,10 +697,9 @@ const App = (() => {
         hHtml += `</div>`;
       });
 
-      // Player picks for this week
       hHtml += '<div class="history-picks">';
       players.forEach(p => {
-        const pWeek = state.players[p][week];
+        const pWeek = state.players[p] && state.players[p][week];
         if (!pWeek || !pWeek.picks) return;
         const pickNames = wd.matchups.map((m, i) => {
           const pick = pWeek.picks[i];
@@ -691,7 +728,6 @@ const App = (() => {
     URL.revokeObjectURL(url);
   }
 
-  // --- Player pick download (lightweight per-player file) ---
   function downloadMyPicks() {
     const data = parseURL() || state.weeks[Object.keys(state.weeks).sort((a, b) => b - a)[0]];
     if (!data) return;
@@ -716,7 +752,6 @@ const App = (() => {
     URL.revokeObjectURL(url);
   }
 
-  // --- Commissioner import: individual pick files ---
   function triggerImport() {
     document.getElementById('import-file').click();
   }
@@ -755,7 +790,6 @@ const App = (() => {
     });
   }
 
-  // --- Full backup import ---
   function importFullData() {
     document.getElementById('import-full-file').click();
   }
@@ -767,7 +801,6 @@ const App = (() => {
       try {
         const d = JSON.parse(e.target.result);
         if (d.players && d.weeks) {
-          // Merge: don't overwrite, layer on top
           Object.keys(d.players || {}).forEach(p => {
             if (!state.players[p]) state.players[p] = {};
             Object.keys(d.players[p]).forEach(w => {
