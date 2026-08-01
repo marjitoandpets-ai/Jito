@@ -125,15 +125,15 @@ label { display: block; font-size: 0.8rem; color: var(--text-dim); margin-bottom
 }
 
 /* Confirmation Card */
-.confirm-card { text-align: center; }
-.pick-card-header h2 { color: var(--accent); font-size: 1.4rem; letter-spacing: 3px; }
-.pick-card-header p { color: var(--text-dim); font-size: 0.85rem; }
+.confirm-card { text-align: center; padding: 16px; }
+.pick-card-header h2 { color: var(--accent); font-size: 1.1rem; letter-spacing: 2px; margin-bottom: 8px; }
+.pick-card-header p { color: var(--text-dim); font-size: 0.8rem; }
 .confirm-pick {
-  padding: 10px; margin: 8px 0; border-radius: 10px;
-  background: rgba(255,255,255,0.04); font-weight: 600;
+  padding: 6px 10px; margin: 4px 0; border-radius: 8px;
+  background: rgba(255,255,255,0.04); font-weight: 600; font-size: 0.85rem;
 }
 .confirm-pick.super-pick { border: 1px solid var(--super); color: var(--super); }
-.hint { text-align: center; color: var(--text-dim); font-size: 0.8rem; margin: 12px 0; }
+.hint { text-align: center; color: var(--text-dim); font-size: 0.75rem; margin: 8px 0; }
 
 /* Leaderboard */
 .lb-table { width: 100%; border-collapse: collapse; }
@@ -243,8 +243,8 @@ label { display: block; font-size: 0.8rem; color: var(--text-dim); margin-bottom
 
 /* Notification banner */
 .notification-banner {
-  text-align: center; font-size: 0.9rem; font-weight: 700;
-  padding: 12px 16px; margin-bottom: 16px; border-radius: 12px;
+  text-align: center; font-size: 0.8rem; font-weight: 700;
+  padding: 8px 12px; margin-bottom: 12px; border-radius: 10px;
   background: linear-gradient(135deg, rgba(0,200,150,0.15), rgba(255,215,0,0.1));
   border: 1px solid var(--accent);
   color: var(--accent);
@@ -258,23 +258,23 @@ label { display: block; font-size: 0.8rem; color: var(--text-dim); margin-bottom
 
 /* Pick counter & breakdown */
 .pick-counter {
-  margin-top: 16px; padding: 16px; border-radius: 12px;
+  margin-top: 12px; padding: 12px; border-radius: 10px;
   background: rgba(255,255,255,0.04); border: 1px solid var(--card-border);
 }
 .pick-counter-header {
-  text-align: center; font-size: 0.85rem; font-weight: 700;
-  color: var(--text-dim); margin-bottom: 12px; text-transform: uppercase; letter-spacing: 1px;
+  text-align: center; font-size: 0.75rem; font-weight: 700;
+  color: var(--text-dim); margin-bottom: 8px; text-transform: uppercase; letter-spacing: 1px;
 }
 .pick-breakdown {
-  margin-bottom: 10px; padding: 8px; border-radius: 8px;
+  margin-bottom: 6px; padding: 6px; border-radius: 6px;
   background: rgba(255,255,255,0.02);
 }
 .pick-breakdown.breakdown-super {
   border: 1px solid rgba(255,215,0,0.3);
 }
 .breakdown-bar {
-  display: flex; height: 6px; border-radius: 3px; overflow: hidden;
-  background: rgba(255,255,255,0.06); margin-bottom: 6px;
+  display: flex; height: 4px; border-radius: 2px; overflow: hidden;
+  background: rgba(255,255,255,0.06); margin-bottom: 4px;
 }
 .bar-a {
   background: var(--accent); transition: width 0.4s ease;
@@ -284,11 +284,11 @@ label { display: block; font-size: 0.8rem; color: var(--text-dim); margin-bottom
 }
 .breakdown-labels {
   display: flex; justify-content: space-between; align-items: center;
-  font-size: 0.8rem;
+  font-size: 0.7rem;
 }
 .bl-team { color: var(--text); }
 .bl-team strong { color: var(--accent); }
-.bl-vs { color: var(--text-dim); font-size: 0.7rem; font-weight: 700; letter-spacing: 1px; }
+.bl-vs { color: var(--text-dim); font-size: 0.6rem; font-weight: 700; letter-spacing: 1px; }
 
 /* Live picks feed */
 .live-pick-row {
