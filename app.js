@@ -100,6 +100,7 @@ const App = (() => {
 
   // --- Screen Navigation ---
   function showScreen(id) {
+    sessionStorage.setItem('marjitos_last_screen', id);
     document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
     document.getElementById(id).classList.add('active');
     if (id === 'screen-commissioner') {
@@ -165,12 +166,17 @@ const App = (() => {
   }
 
   function init() {
+    // Restore last screen from sessionStorage
+    const lastScreen = sessionStorage.getItem('marjitos_last_screen');
+
     initFirebase();
     const data = parseURL();
     if (data && data.matchups) {
       state.weeks[data.week] = data;
       save();
-      showScreen('screen-landing');
+      showScreen(lastScreen || 'screen-landing');
+    } else if (lastScreen) {
+      showScreen(lastScreen);
     }
   }
 
