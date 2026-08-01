@@ -261,35 +261,53 @@ const App = (() => {
     const container = document.getElementById('matchup-setups');
     container.innerHTML = '';
 
-    const pickerHeader = document.createElement('div');
-    pickerHeader.innerHTML = `
-      <div class="matchup-label regular" style="margin-bottom:4px">Pick 3 matchups (tap to select)</div>
-      <p style="font-size:0.75rem;color:var(--text-dim);text-align:center;margin-bottom:12px">
-        The 3rd pick becomes the Super Matchup (3x pts). Sorted by tightest spread.
-      </p>`;
-    container.appendChild(pickerHeader);
+    const week = parseInt(document.getElementById('comm-week').value) || 1;
 
-    PRESETS.forEach((p, i) => {
-      const card = document.createElement('div');
-      card.className = 'preset-card';
-      card.id = `preset-${i}`;
-      card.onclick = () => togglePreset(i);
-      const primeBadge = p.prime
-        ? `<span class="prime-badge prime-${p.prime.toLowerCase()}">${p.prime}</span>`
-        : '';
-      card.innerHTML = `
-        <div class="preset-teams">${primeBadge}${p.a} <span class="vs-text">vs</span> ${p.b}</div>
-        <div class="preset-meta">
-          <span class="preset-spread">Spread: ${p.spread}</span>
-          <span class="preset-tag">${p.tag}</span>
-        </div>
-        <div class="preset-slot" id="preset-slot-${i}"></div>`;
-      container.appendChild(card);
-    });
+    // Only show presets for Week 1
+    if (week === 1) {
+      const pickerHeader = document.createElement('div');
+      pickerHeader.innerHTML = `
+        <div class="matchup-label regular" style="margin-bottom:4px">Pick 3 matchups (tap to select)</div>
+        <p style="font-size:0.75rem;color:var(--text-dim);text-align:center;margin-bottom:12px">
+          The 3rd pick becomes the Super Matchup (3x pts). Sorted by tightest spread.
+        </p>`;
+      container.appendChild(pickerHeader);
+
+      PRESETS.forEach((p, i) => {
+        const card = document.createElement('div');
+        card.className = 'preset-card';
+        card.id = `preset-${i}`;
+        card.onclick = () => togglePreset(i);
+        const primeBadge = p.prime
+          ? `<span class="prime-badge prime-${p.prime.toLowerCase()}">${p.prime}</span>`
+          : '';
+        card.innerHTML = `
+          <div class="preset-teams">${primeBadge}${p.a} <span class="vs-text">vs</span> ${p.b}</div>
+          <div class="preset-meta">
+            <span class="preset-spread">Spread: ${p.spread}</span>
+            <span class="preset-tag">${p.tag}</span>
+          </div>
+          <div class="preset-slot" id="preset-slot-${i}"></div>`;
+        container.appendChild(card);
+      });
+
+      const divider = document.createElement('div');
+      divider.className = 'divider-text';
+      divider.style.marginTop = '16px';
+      divider.textContent = 'or type custom matchups';
+      container.appendChild(divider);
+    } else {
+      const header = document.createElement('div');
+      header.innerHTML = `
+        <div class="matchup-label regular" style="margin-bottom:4px">Week ${week} — Set Up Matchups</div>
+        <p style="font-size:0.75rem;color:var(--text-dim);text-align:center;margin-bottom:12px">
+          Enter 2 regular matchups (1 pt each) + 1 Super Matchup (3x pts).
+        </p>`;
+      container.appendChild(header);
+    }
 
     const manual = document.createElement('div');
     manual.innerHTML = `
-      <div class="divider-text" style="margin-top:16px">or type custom matchups</div>
       <div class="setup-group">
         <div class="matchup-label regular">Matchup 1 (1 pt)</div>
         <div class="setup-row">
