@@ -77,7 +77,7 @@ const App = (() => {
           if (id === 'screen-dashboard') renderDashboard();
           if (id === 'screen-leaderboard') renderLeaderboard();
           if (id === 'screen-results') loadResultsWeek();
-          if (id === 'screen-commissioner') { initCommissioner(); updateLiveFeed(); }
+          if (id === 'screen-commissioner') { if (!_commWeekOverride) initCommissioner(); updateLiveFeed(); }
           if (id === 'screen-all-picks') renderAllPicks();
           if (id === 'screen-confirm') {
             const data = parseURL() || state.weeks[Object.keys(state.weeks).sort((a, b) => b - a)[0]];
@@ -104,7 +104,7 @@ const App = (() => {
     document.getElementById(id).classList.add('active');
     if (id === 'screen-landing') updateLandingInfo();
     if (id === 'screen-commissioner') {
-      // Auto-set week from URL or latest saved week (unless override active)
+      // Auto-set week from URL or latest saved week (unless override active from nextWeek)
       if (_commWeekOverride === null) {
         const urlData = parseURL();
         const weekEl = document.getElementById('comm-week');
@@ -114,8 +114,10 @@ const App = (() => {
           const savedWeeks = Object.keys(state.weeks).sort((a, b) => b - a);
           if (savedWeeks.length > 0) weekEl.value = savedWeeks[0];
         }
+        initCommissioner();
+      } else {
+        initCommissioner(_commWeekOverride);
       }
-      initCommissioner();
       updateLiveFeed();
     }
     if (id === 'screen-leaderboard') renderLeaderboard();
@@ -215,15 +217,15 @@ const App = (() => {
   }
 
   // --- Commissioner ---
-  function initCommissioner() {
+  function initCommissioner(forceWeek) {
     selectedPresets = [];
     const container = document.getElementById('matchup-setups');
     container.innerHTML = '';
 
     const weekEl = document.getElementById('comm-week');
-    // If override is set (e.g. from nextWeek), force that value
-    if (_commWeekOverride !== null) {
-      weekEl.value = _commWeekOverride;
+    // If a specific week was passed (e.g. from nextWeek), use it
+    if (forceWeek) {
+      weekEl.value = forceWeek;
     }
     const week = parseInt(weekEl.value) || 1;
     const existingWeek = state.weeks[week];
@@ -354,11 +356,11 @@ const App = (() => {
     weekEl.value = nextW;
     // Clear stale hash so it doesn't pull back to old week
     window.location.hash = '';
-    // Set override so Firebase listener doesn't reset the week
+    // Lock the week — prevents Firebase listener from resetting
     _commWeekOverride = nextW;
-    initCommissioner();
-    // Clear override after a short delay (lets Firebase settle)
-    setTimeout(() => { _commWeekOverride = null; }, 2000);
+    initCommissioner(nextW);
+    // Keep override for 3 seconds so Firebase callbacks don't reset
+    setTimeout(() => { _commWeekOverride = null; }, 3000);
   }
 
   function resetWeekSetup() {
