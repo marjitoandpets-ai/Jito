@@ -297,12 +297,10 @@ const App = (() => {
       html += `</div>`;
       container.innerHTML = html;
 
-      // Show share link
+      // Keep hash updated but hide share link box on locked view
       const hash = encodeHash(existingWeek);
-      const url = window.location.origin + window.location.pathname + '#' + hash;
-      document.getElementById('share-link').value = url;
-      document.getElementById('share-link-box').classList.remove('hidden');
       window.location.hash = hash;
+      document.getElementById('share-link-box').classList.add('hidden');
 
       updateLiveFeed();
       return;
@@ -454,10 +452,9 @@ const App = (() => {
     save();
 
     const hash = encodeHash(data);
-    const url = window.location.origin + window.location.pathname + '#' + hash;
-    document.getElementById('share-link').value = url;
-    document.getElementById('share-link-box').classList.remove('hidden');
     window.location.hash = hash;
+    // Re-render to show locked view
+    initCommissioner();
   }
 
   function copyLink() {
