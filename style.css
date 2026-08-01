@@ -289,3 +289,29 @@ label { display: block; font-size: 0.8rem; color: var(--text-dim); margin-bottom
 .bl-team { color: var(--text); }
 .bl-team strong { color: var(--accent); }
 .bl-vs { color: var(--text-dim); font-size: 0.7rem; font-weight: 700; letter-spacing: 1px; }
+
+/* Live picks feed */
+.live-pick-row {
+  display: flex; justify-content: space-between; align-items: center;
+  padding: 8px 10px; margin-bottom: 4px; border-radius: 8px;
+  background: rgba(0,200,150,0.06); border: 1px solid rgba(0,200,150,0.15);
+}
+.live-pick-name { font-weight: 700; font-size: 0.85rem; }
+.live-pick-teams { font-size: 0.8rem; color: var(--text-dim); }
+
+/* All Picks screen */
+.all-pick-card {
+  padding: 12px; margin-bottom: 8px; border-radius: 10px;
+  background: rgba(255,255,255,0.04); border: 1px solid var(--card-border);
+}
+.all-pick-card.pending { opacity: 0.5; }
+.all-pick-name { font-weight: 700; font-size: 0.9rem; margin-bottom: 6px; }
+.all-pick-choices { display: flex; gap: 6px; flex-wrap: wrap; }
+.all-pick-chip {
+  padding: 4px 10px; border-radius: 6px; font-size: 0.8rem; font-weight: 600;
+  background: rgba(0,200,150,0.1); color: var(--accent); border: 1px solid rgba(0,200,150,0.2);
+}
+.all-pick-chip.chip-super {
+  background: rgba(255,215,0,0.1); color: var(--super); border-color: rgba(255,215,0,0.3);
+}
+.all-pick-tb { font-size: 0.75rem; color: var(--text-dim); margin-top: 6px; }

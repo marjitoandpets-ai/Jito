@@ -39,8 +39,16 @@
           <button class="btn secondary" onclick="App.copyLink()">Copy Link</button>
           <button class="btn primary" style="margin-top:8px" onclick="App.commishMakePicks()">Make My Picks</button>
         </div>
+
+        <!-- Live picks feed -->
+        <div id="live-picks-feed" class="hidden">
+          <div class="divider-text">live picks</div>
+          <div id="live-picks-list"></div>
+        </div>
+
         <div class="divider-text">manage</div>
         <button class="btn secondary" onclick="App.showScreen('screen-dashboard')">Commissioner Dashboard</button>
+        <button class="btn secondary" onclick="App.showAllPicks()">View All Picks</button>
         <button class="btn ghost" onclick="App.showScreen('screen-results')">Enter Results</button>
         <button class="btn ghost" onclick="App.showScreen('screen-landing')">Back</button>
       </div>
@@ -126,6 +134,17 @@
         <h2>Leaderboard</h2>
         <div id="leaderboard-table"></div>
         <button class="btn ghost" onclick="App.showScreen('screen-landing')">Back</button>
+      </div>
+    </div>
+
+    <!-- All Picks View -->
+    <div id="screen-all-picks" class="screen">
+      <div class="card glass">
+        <h2>All Picks</h2>
+        <label>Week</label>
+        <input type="number" id="all-picks-week" min="1" max="18" value="1" onchange="App.renderAllPicks()">
+        <div id="all-picks-container"></div>
+        <button class="btn ghost" onclick="App.showScreen('screen-commissioner')">Back</button>
       </div>
     </div>
   </div>

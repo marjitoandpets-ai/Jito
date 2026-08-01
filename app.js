@@ -77,6 +77,8 @@ const App = (() => {
           if (id === 'screen-dashboard') renderDashboard();
           if (id === 'screen-leaderboard') renderLeaderboard();
           if (id === 'screen-results') loadResultsWeek();
+          if (id === 'screen-commissioner') updateLiveFeed();
+          if (id === 'screen-all-picks') renderAllPicks();
           // Update pick counter if on confirm screen
           if (id === 'screen-confirm') {
             const data = parseURL() || state.weeks[Object.keys(state.weeks).sort((a, b) => b - a)[0]];
@@ -100,10 +102,11 @@ const App = (() => {
   function showScreen(id) {
     document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
     document.getElementById(id).classList.add('active');
-    if (id === 'screen-commissioner') initCommissioner();
+    if (id === 'screen-commissioner') { initCommissioner(); updateLiveFeed(); }
     if (id === 'screen-leaderboard') renderLeaderboard();
     if (id === 'screen-results') loadResultsWeek();
     if (id === 'screen-dashboard') renderDashboard();
+    if (id === 'screen-all-picks') renderAllPicks();
   }
 
   // --- URL Hash Encoding ---
@@ -718,6 +721,115 @@ const App = (() => {
     historyEl.innerHTML = hHtml;
   }
 
+  // --- Live Picks Feed (commissioner screen) ---
+  function updateLiveFeed() {
+    const weekEl = document.getElementById('comm-week');
+    const week = weekEl ? (parseInt(weekEl.value) || 1) : 1;
+    const weekData = state.weeks[week];
+    const feedEl = document.getElementById('live-picks-feed');
+    const listEl = document.getElementById('live-picks-list');
+    if (!feedEl || !listEl) return;
+
+    const players = Object.keys(state.players);
+    const pickedPlayers = players.filter(p => {
+      const pw = state.players[p] && state.players[p][week];
+      return pw && pw.picks && Object.keys(pw.picks).length > 0;
+    });
+
+    if (pickedPlayers.length === 0) {
+      feedEl.classList.add('hidden');
+      return;
+    }
+
+    feedEl.classList.remove('hidden');
+    let html = `<div class="pick-counter-header" style="margin-bottom:8px">${pickedPlayers.length} pick${pickedPlayers.length !== 1 ? 's' : ''} locked</div>`;
+
+    pickedPlayers.forEach(p => {
+      const pw = state.players[p][week];
+      let pickSummary = '';
+      if (weekData && weekData.matchups) {
+        pickSummary = weekData.matchups.map((m, i) => {
+          const pick = (pw.picks || {})[i];
+          return pick === 'a' ? m.a : pick === 'b' ? m.b : '?';
+        }).join(', ');
+      } else {
+        pickSummary = Object.values(pw.picks || {}).join(', ');
+      }
+      html += `<div class="live-pick-row"><span class="live-pick-name">${p}</span><span class="live-pick-teams">${pickSummary}</span></div>`;
+    });
+
+    listEl.innerHTML = html;
+  }
+
+  // --- All Picks Screen ---
+  function showAllPicks() {
+    const weekVal = document.getElementById('comm-week').value;
+    document.getElementById('all-picks-week').value = weekVal || 1;
+    showScreen('screen-all-picks');
+  }
+
+  function renderAllPicks() {
+    const week = parseInt(document.getElementById('all-picks-week').value) || 1;
+    const container = document.getElementById('all-picks-container');
+    const weekData = state.weeks[week];
+
+    if (!weekData) {
+      container.innerHTML = '<p style="color:var(--text-dim)">No matchups set for this week</p>';
+      return;
+    }
+
+    const players = Object.keys(state.players);
+    const pickedPlayers = players.filter(p => {
+      const pw = state.players[p] && state.players[p][week];
+      return pw && pw.picks && Object.keys(pw.picks).length > 0;
+    });
+    const pendingPlayers = players.filter(p => !pickedPlayers.includes(p));
+
+    let html = '';
+
+    // Matchup header
+    html += '<div style="margin:12px 0 8px;font-size:0.8rem;color:var(--text-dim)">';
+    weekData.matchups.forEach((m, i) => {
+      html += `<div style="margin-bottom:4px">${m.isSuper ? '<span class="super-badge">SUPER</span> ' : `M${i+1}: `}${m.a} vs ${m.b}</div>`;
+    });
+    html += '</div>';
+
+    // Picked players
+    if (pickedPlayers.length > 0) {
+      html += `<div class="divider-text">${pickedPlayers.length} locked in</div>`;
+      pickedPlayers.forEach(p => {
+        const pw = state.players[p][week];
+        html += '<div class="all-pick-card">';
+        html += `<div class="all-pick-name">${p}</div>`;
+        html += '<div class="all-pick-choices">';
+        weekData.matchups.forEach((m, i) => {
+          const pick = (pw.picks || {})[i];
+          const teamName = pick === 'a' ? m.a : pick === 'b' ? m.b : '?';
+          html += `<span class="all-pick-chip${m.isSuper ? ' chip-super' : ''}">${teamName}</span>`;
+        });
+        html += '</div>';
+        if (pw.tiebreaker) {
+          html += `<div class="all-pick-tb">Tiebreaker: ${pw.tiebreaker}</div>`;
+        }
+        html += '</div>';
+      });
+    }
+
+    // Pending players
+    if (pendingPlayers.length > 0) {
+      html += `<div class="divider-text">${pendingPlayers.length} waiting</div>`;
+      pendingPlayers.forEach(p => {
+        html += `<div class="all-pick-card pending"><div class="all-pick-name">${p}</div><div class="all-pick-choices"><span style="color:var(--text-dim);font-size:0.8rem">No picks yet</span></div></div>`;
+      });
+    }
+
+    if (players.length === 0) {
+      html = '<p style="color:var(--text-dim);text-align:center">No players have entered yet</p>';
+    }
+
+    container.innerHTML = html;
+  }
+
   function exportData() {
     const blob = new Blob([JSON.stringify(state, null, 2)], { type: 'application/json' });
     const url = URL.createObjectURL(blob);
@@ -833,6 +945,7 @@ const App = (() => {
     pickTeam, setTiebreaker, submitPicks,
     loadResultsWeek, addPlayerForWeek, saveResults,
     togglePreset, exportData, downloadMyPicks,
-    triggerImport, handleImport, importFullData, handleFullImport
+    triggerImport, handleImport, importFullData, handleFullImport,
+    showAllPicks, renderAllPicks
   };
 })();
