@@ -33,6 +33,48 @@ const App = (() => {
   };
   const NAME_TO_CODE = Object.fromEntries(Object.entries(TEAMS).map(([k,v]) => [v,k]));
 
+  // Team primary colors + emoji for visual identity
+  const TEAM_META = {
+    Cardinals: { color: '#97233F', emoji: '🐦' },
+    Falcons: { color: '#A71930', emoji: '🦅' },
+    Ravens: { color: '#241773', emoji: '🐦‍⬛' },
+    Bills: { color: '#00338D', emoji: '🦬' },
+    Panthers: { color: '#0085CA', emoji: '🐆' },
+    Bears: { color: '#0B162A', emoji: '🐻' },
+    Bengals: { color: '#FB4F14', emoji: '🐯' },
+    Browns: { color: '#311D00', emoji: '🐶' },
+    Cowboys: { color: '#003594', emoji: '⭐' },
+    Broncos: { color: '#FB4F14', emoji: '🐴' },
+    Lions: { color: '#0076B6', emoji: '🦁' },
+    Packers: { color: '#203731', emoji: '🧀' },
+    Texans: { color: '#03202F', emoji: '🐂' },
+    Colts: { color: '#002C5F', emoji: '🐎' },
+    Jaguars: { color: '#006778', emoji: '🐆' },
+    Chiefs: { color: '#E31837', emoji: '🏹' },
+    Raiders: { color: '#000000', emoji: '☠️' },
+    Chargers: { color: '#0080C6', emoji: '⚡' },
+    Rams: { color: '#003594', emoji: '🐏' },
+    Dolphins: { color: '#008E97', emoji: '🐬' },
+    Vikings: { color: '#4F2683', emoji: '⚔️' },
+    Patriots: { color: '#002244', emoji: '🇺🇸' },
+    Saints: { color: '#D3BC8D', emoji: '⚜️' },
+    Giants: { color: '#0B2265', emoji: '🗽' },
+    Jets: { color: '#125740', emoji: '✈️' },
+    Eagles: { color: '#004C54', emoji: '🦅' },
+    Steelers: { color: '#FFB612', emoji: '⚙️' },
+    '49ers': { color: '#AA0000', emoji: '⛏️' },
+    Seahawks: { color: '#002244', emoji: '🦅' },
+    Buccaneers: { color: '#D50A0A', emoji: '🏴‍☠️' },
+    Titans: { color: '#0C2340', emoji: '⚔️' },
+    Commanders: { color: '#5A1414', emoji: '🎖️' },
+  };
+
+  function teamBadge(name) {
+    const meta = TEAM_META[name];
+    if (!meta) return name;
+    return `<span class="team-badge" style="background:${meta.color}">${meta.emoji}</span> ${name}`;
+  }
+
   // NFL 2026 Primetime Games Only — TNF (1pt), SNF (1pt), MNF (Super 3x)
   const SCHEDULE = {
     1:  { tnf: { a: '49ers', b: 'Rams' }, snf: { a: 'Cowboys', b: 'Giants' }, mnf: { a: 'Broncos', b: 'Chiefs' } },
@@ -220,7 +262,7 @@ const App = (() => {
     if (weekData && weekData.matchups) {
       let html = `<div style="text-align:center;margin-bottom:12px;padding:8px;border-radius:8px;background:rgba(0,200,150,0.06)">`;
       html += `<div style="font-size:0.7rem;font-weight:700;color:var(--accent);letter-spacing:1px;margin-bottom:4px">WEEK ${weekData.week} ACTIVE</div>`;
-      html += weekData.matchups.map(m => `<span style="font-size:0.8rem;color:var(--text-dim)">${m.a} vs ${m.b}${m.isSuper ? ' ⭐' : ''}</span>`).join('<br>');
+      html += weekData.matchups.map(m => `<span style="font-size:0.8rem;color:var(--text-dim)">${teamBadge(m.a)} vs ${teamBadge(m.b)}${m.isSuper ? ' ⭐' : ''}</span>`).join('<br>');
       html += `</div>`;
       el.innerHTML = html;
     } else {
@@ -247,7 +289,7 @@ const App = (() => {
       let html = '<div class="divider-text">week ' + week + ' matchups locked</div>';
       existingWeek.matchups.forEach((m, i) => {
         const label = m.isSuper ? 'SUPER' : `Matchup ${i + 1}`;
-        html += `<div class="live-pick-row"><span class="live-pick-name">${label}</span><span class="live-pick-teams">${m.a} vs ${m.b}</span></div>`;
+        html += `<div class="live-pick-row"><span class="live-pick-name">${label}</span><span class="live-pick-teams">${teamBadge(m.a)} vs ${teamBadge(m.b)}</span></div>`;
       });
       html += `<div style="display:flex;gap:8px;margin-top:12px">`;
       html += `<button class="btn ghost" style="flex:1" onclick="App.editWeekSetup()">Edit Week ${week}</button>`;
@@ -505,9 +547,9 @@ const App = (() => {
       card.innerHTML = `
         <div class="matchup-label ${labelClass}">${labelText}</div>
         <div class="matchup-vs">
-          <button class="team-btn" data-matchup="${i}" data-team="a" onclick="App.pickTeam(${i},'a',${m.isSuper})">${m.a}</button>
+          <button class="team-btn" data-matchup="${i}" data-team="a" onclick="App.pickTeam(${i},'a',${m.isSuper})">${teamBadge(m.a)}</button>
           <span class="vs-text">VS</span>
-          <button class="team-btn" data-matchup="${i}" data-team="b" onclick="App.pickTeam(${i},'b',${m.isSuper})">${m.b}</button>
+          <button class="team-btn" data-matchup="${i}" data-team="b" onclick="App.pickTeam(${i},'b',${m.isSuper})">${teamBadge(m.b)}</button>
         </div>
         ${m.isSuper ? `
         <div class="tiebreaker">

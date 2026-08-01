@@ -29,6 +29,18 @@ body {
 #app { max-width: 480px; margin: 0 auto; padding: 16px; }
 header { position: relative; }
 
+.team-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  font-size: 13px;
+  vertical-align: middle;
+  margin-right: 4px;
+}
+
 header { text-align: center; padding: 24px 0 8px; }
 header h1 {
   font-size: 1.4rem; font-weight: 800; letter-spacing: 2px;
