@@ -96,8 +96,9 @@ const App = (() => {
     if (data && data.matchups) {
       state.weeks[data.week] = data;
       save();
+      // If someone opens a matchup link, go straight to landing (voting flow)
+      showScreen('screen-landing');
     }
-    initCommissioner();
   }
 
   // --- Commissioner ---
@@ -134,6 +135,35 @@ const App = (() => {
       container.appendChild(card);
     });
 
+    // Manual entry fallback (for custom matchups / future weeks)
+    const manual = document.createElement('div');
+    manual.innerHTML = `
+      <div class="divider-text" style="margin-top:16px">or type custom matchups</div>
+      <div class="setup-group">
+        <div class="matchup-label regular">Matchup 1 (1 pt)</div>
+        <div class="setup-row">
+          <input type="text" id="team-0-a" placeholder="Team A">
+          <span class="vs-text">VS</span>
+          <input type="text" id="team-0-b" placeholder="Team B">
+        </div>
+      </div>
+      <div class="setup-group">
+        <div class="matchup-label regular">Matchup 2 (1 pt)</div>
+        <div class="setup-row">
+          <input type="text" id="team-1-a" placeholder="Team A">
+          <span class="vs-text">VS</span>
+          <input type="text" id="team-1-b" placeholder="Team B">
+        </div>
+      </div>
+      <div class="setup-group super-setup">
+        <div class="matchup-label super-label">Super Matchup<span class="super-badge">3x PTS</span></div>
+        <div class="setup-row">
+          <input type="text" id="team-2-a" placeholder="Team A">
+          <span class="vs-text">VS</span>
+          <input type="text" id="team-2-b" placeholder="Team B">
+        </div>
+      </div>`;
+    container.appendChild(manual);
   }
 
   function togglePreset(idx) {
@@ -157,21 +187,46 @@ const App = (() => {
         slot.style.color = isSuper ? 'var(--super)' : 'var(--accent)';
       }
     });
+    // Sync manual fields with preset selections
+    for (let si = 0; si < 3; si++) {
+      const aEl = document.getElementById(`team-${si}-a`);
+      const bEl = document.getElementById(`team-${si}-b`);
+      if (aEl && bEl) {
+        if (si < selectedPresets.length) {
+          const p = PRESETS[selectedPresets[si]];
+          aEl.value = p.a;
+          bEl.value = p.b;
+        } else {
+          aEl.value = '';
+          bEl.value = '';
+        }
+      }
+    }
   }
 
   function generateLink() {
     const week = parseInt(document.getElementById('comm-week').value) || 1;
+    let matchups = [];
 
-    if (selectedPresets.length < 3) {
-      alert('Tap 3 matchups to continue');
-      return;
+    // Try presets first
+    if (selectedPresets.length === 3) {
+      matchups = selectedPresets.map((pi, si) => ({
+        a: PRESETS[pi].a,
+        b: PRESETS[pi].b,
+        isSuper: si === 2
+      }));
+    } else {
+      // Fall back to manual entry
+      for (let i = 0; i < 3; i++) {
+        const a = (document.getElementById(`team-${i}-a`) || {}).value || '';
+        const b = (document.getElementById(`team-${i}-b`) || {}).value || '';
+        if (!a.trim() || !b.trim()) {
+          alert('Either tap 3 preset matchups OR fill in all custom fields');
+          return;
+        }
+        matchups.push({ a: a.trim(), b: b.trim(), isSuper: i === 2 });
+      }
     }
-
-    const matchups = selectedPresets.map((pi, si) => ({
-      a: PRESETS[pi].a,
-      b: PRESETS[pi].b,
-      isSuper: si === 2
-    }));
 
     const data = { week, matchups };
     state.weeks[week] = data;
