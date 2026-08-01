@@ -104,14 +104,16 @@ const App = (() => {
     document.getElementById(id).classList.add('active');
     if (id === 'screen-landing') updateLandingInfo();
     if (id === 'screen-commissioner') {
-      // Auto-set week from URL or latest saved week
-      const urlData = parseURL();
-      const weekEl = document.getElementById('comm-week');
-      if (urlData && urlData.week) {
-        weekEl.value = urlData.week;
-      } else {
-        const savedWeeks = Object.keys(state.weeks).sort((a, b) => b - a);
-        if (savedWeeks.length > 0) weekEl.value = savedWeeks[0];
+      // Auto-set week from URL or latest saved week (unless override active)
+      if (_commWeekOverride === null) {
+        const urlData = parseURL();
+        const weekEl = document.getElementById('comm-week');
+        if (urlData && urlData.week) {
+          weekEl.value = urlData.week;
+        } else {
+          const savedWeeks = Object.keys(state.weeks).sort((a, b) => b - a);
+          if (savedWeeks.length > 0) weekEl.value = savedWeeks[0];
+        }
       }
       initCommissioner();
       updateLiveFeed();
@@ -219,6 +221,10 @@ const App = (() => {
     container.innerHTML = '';
 
     const weekEl = document.getElementById('comm-week');
+    // If override is set (e.g. from nextWeek), force that value
+    if (_commWeekOverride !== null) {
+      weekEl.value = _commWeekOverride;
+    }
     const week = parseInt(weekEl.value) || 1;
     const existingWeek = state.weeks[week];
 
@@ -320,12 +326,21 @@ const App = (() => {
     renderMatchupPicker();
   }
 
+  let _commWeekOverride = null;
+
   function nextWeek() {
-    // Advance to the next week number and show setup
+    // Advance to the next week number and show fresh setup
     const weekEl = document.getElementById('comm-week');
     const current = parseInt(weekEl.value) || 1;
-    weekEl.value = current + 1;
+    const nextW = current + 1;
+    weekEl.value = nextW;
+    // Clear stale hash so it doesn't pull back to old week
+    window.location.hash = '';
+    // Set override so Firebase listener doesn't reset the week
+    _commWeekOverride = nextW;
     initCommissioner();
+    // Clear override after a short delay (lets Firebase settle)
+    setTimeout(() => { _commWeekOverride = null; }, 2000);
   }
 
   function resetWeekSetup() {
