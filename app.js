@@ -236,6 +236,9 @@ const App = (() => {
     const url = window.location.origin + window.location.pathname + '#' + hash;
     document.getElementById('share-link').value = url;
     document.getElementById('share-link-box').classList.remove('hidden');
+
+    // Set the hash on the current page so voting flow can find the matchups
+    window.location.hash = hash;
   }
 
   function copyLink() {
@@ -246,6 +249,11 @@ const App = (() => {
       btn.textContent = 'Copied';
       setTimeout(() => btn.textContent = 'Copy Link', 1500);
     });
+  }
+
+  function commishMakePicks() {
+    // Let the commissioner jump straight to voting after generating the link
+    showScreen('screen-landing');
   }
 
   // --- Player Voting ---
@@ -725,7 +733,7 @@ const App = (() => {
   init();
 
   return {
-    showScreen, enterPlayer, generateLink, copyLink,
+    showScreen, enterPlayer, generateLink, copyLink, commishMakePicks,
     pickTeam, setTiebreaker, submitPicks,
     loadResultsWeek, addPlayerForWeek, saveResults,
     togglePreset, exportData, downloadMyPicks,
