@@ -33,142 +33,26 @@ const App = (() => {
   };
   const NAME_TO_CODE = Object.fromEntries(Object.entries(TEAMS).map(([k,v]) => [v,k]));
 
-  // NFL 2026 full schedule by week (away @ home shown as a vs b)
+  // NFL 2026 Primetime Games Only — TNF (1pt), SNF (1pt), MNF (Super 3x)
   const SCHEDULE = {
-    1: [
-      { a: '49ers', b: 'Rams', prime: 'TNF', tag: 'Melbourne Showdown' },
-      { a: 'Bills', b: 'Texans', prime: null, tag: 'AFC Heavyweights' },
-      { a: 'Buccaneers', b: 'Bengals', prime: null, tag: 'Cross-Conference' },
-      { a: 'Saints', b: 'Lions', prime: null, tag: 'NFC Clash' },
-      { a: 'Jets', b: 'Titans', prime: null, tag: 'AFC Matchup' },
-      { a: 'Ravens', b: 'Colts', prime: null, tag: 'AFC South Visit' },
-      { a: 'Falcons', b: 'Steelers', prime: null, tag: 'Cross-Conference' },
-      { a: 'Bears', b: 'Panthers', prime: null, tag: 'NFC Matchup' },
-      { a: 'Browns', b: 'Jaguars', prime: null, tag: 'AFC Matchup' },
-      { a: 'Cardinals', b: 'Chargers', prime: null, tag: 'West Coast' },
-      { a: 'Packers', b: 'Vikings', prime: null, tag: 'NFC North Rivalry' },
-      { a: 'Dolphins', b: 'Raiders', prime: null, tag: 'AFC Matchup' },
-      { a: 'Commanders', b: 'Eagles', prime: null, tag: 'NFC East Rivalry' },
-      { a: 'Cowboys', b: 'Giants', prime: 'SNF', tag: 'NFC East Rivalry' },
-      { a: 'Broncos', b: 'Chiefs', prime: 'MNF', tag: 'AFC West Rivalry' },
-    ],
-    2: [
-      { a: 'Lions', b: 'Bills', prime: 'TNF', tag: 'Heavyweight Clash' },
-      { a: 'Steelers', b: 'Patriots', prime: null, tag: 'AFC North vs East' },
-      { a: 'Panthers', b: 'Falcons', prime: null, tag: 'NFC South' },
-      { a: 'Vikings', b: 'Bears', prime: null, tag: 'NFC North Rivalry' },
-      { a: 'Bengals', b: 'Texans', prime: null, tag: 'AFC Matchup' },
-      { a: 'Browns', b: 'Buccaneers', prime: null, tag: 'Cross-Conference' },
-      { a: 'Saints', b: 'Ravens', prime: null, tag: 'Cross-Conference' },
-      { a: 'Eagles', b: 'Titans', prime: null, tag: 'Cross-Conference' },
-      { a: 'Packers', b: 'Jets', prime: null, tag: 'Cross-Conference' },
-      { a: 'Jaguars', b: 'Broncos', prime: null, tag: 'AFC Matchup' },
-      { a: 'Raiders', b: 'Chargers', prime: null, tag: 'AFC West Rivalry' },
-      { a: 'Seahawks', b: 'Cardinals', prime: null, tag: 'NFC West' },
-      { a: 'Dolphins', b: '49ers', prime: null, tag: 'Cross-Conference' },
-      { a: 'Commanders', b: 'Cowboys', prime: null, tag: 'NFC East Rivalry' },
-      { a: 'Colts', b: 'Chiefs', prime: 'SNF', tag: 'AFC Showdown' },
-      { a: 'Giants', b: 'Rams', prime: 'MNF', tag: 'Cross-Conference' },
-    ],
-    3: [
-      { a: 'Falcons', b: 'Packers', prime: 'TNF', tag: 'NFC Matchup' },
-      { a: 'Chargers', b: 'Bills', prime: null, tag: 'AFC Heavyweights' },
-      { a: 'Panthers', b: 'Browns', prime: null, tag: 'Cross-Conference' },
-      { a: 'Jets', b: 'Lions', prime: null, tag: 'Cross-Conference' },
-      { a: 'Texans', b: 'Colts', prime: null, tag: 'AFC South Rivalry' },
-      { a: 'Chiefs', b: 'Dolphins', prime: null, tag: 'AFC Rematch' },
-      { a: 'Titans', b: 'Giants', prime: null, tag: 'Cross-Conference' },
-      { a: 'Bengals', b: 'Steelers', prime: null, tag: 'AFC North Rivalry' },
-      { a: 'Seahawks', b: 'Commanders', prime: null, tag: 'Cross-Conference' },
-      { a: 'Patriots', b: 'Jaguars', prime: null, tag: 'AFC Matchup' },
-      { a: 'Cardinals', b: '49ers', prime: null, tag: 'NFC West Rivalry' },
-      { a: 'Vikings', b: 'Buccaneers', prime: null, tag: 'NFC Matchup' },
-      { a: 'Ravens', b: 'Cowboys', prime: null, tag: 'Rio de Janeiro' },
-      { a: 'Raiders', b: 'Saints', prime: null, tag: 'AFC vs NFC' },
-      { a: 'Rams', b: 'Broncos', prime: 'SNF', tag: 'Cross-Conference' },
-      { a: 'Eagles', b: 'Bears', prime: 'MNF', tag: 'NFC Matchup' },
-    ],
-    4: [
-      { a: 'Steelers', b: 'Browns', prime: 'TNF', tag: 'AFC North Rivalry' },
-      { a: 'Colts', b: 'Commanders', prime: null, tag: 'London' },
-      { a: 'Jets', b: 'Bears', prime: null, tag: 'Cross-Conference' },
-      { a: 'Cardinals', b: 'Giants', prime: null, tag: 'Cross-Conference' },
-      { a: 'Rams', b: 'Eagles', prime: null, tag: 'NFC Matchup' },
-      { a: 'Patriots', b: 'Bills', prime: null, tag: 'AFC East Rivalry' },
-      { a: 'Titans', b: 'Ravens', prime: null, tag: 'AFC Matchup' },
-      { a: 'Dolphins', b: 'Panthers', prime: null, tag: 'Cross-Conference' },
-      { a: 'Vikings', b: 'Steelers', prime: null, tag: 'Cross-Conference' },
-      { a: 'Raiders', b: 'Chargers', prime: null, tag: 'AFC West Rivalry' },
-      { a: 'Cowboys', b: 'Saints', prime: null, tag: 'NFC Matchup' },
-      { a: 'Broncos', b: 'Chiefs', prime: null, tag: 'AFC West Rivalry' },
-      { a: 'Bengals', b: 'Packers', prime: 'SNF', tag: 'Cross-Conference' },
-      { a: 'Giants', b: 'Seahawks', prime: 'MNF', tag: 'Cross-Conference' },
-    ],
-    5: [
-      { a: 'Buccaneers', b: 'Cowboys', prime: 'TNF', tag: 'NFC Matchup' },
-      { a: 'Eagles', b: 'Jaguars', prime: null, tag: 'London' },
-      { a: 'Bengals', b: 'Dolphins', prime: null, tag: 'AFC Matchup' },
-      { a: 'Browns', b: 'Jets', prime: null, tag: 'AFC Matchup' },
-      { a: 'Texans', b: 'Titans', prime: null, tag: 'AFC South Rivalry' },
-      { a: 'Colts', b: 'Steelers', prime: null, tag: 'AFC Matchup' },
-      { a: 'Raiders', b: 'Patriots', prime: null, tag: 'AFC Matchup' },
-      { a: 'Vikings', b: 'Saints', prime: null, tag: 'NFC Matchup' },
-      { a: 'Giants', b: 'Commanders', prime: null, tag: 'NFC East Rivalry' },
-      { a: 'Broncos', b: 'Chargers', prime: null, tag: 'AFC West Rivalry' },
-      { a: 'Bears', b: 'Packers', prime: null, tag: 'NFC North Rivalry' },
-      { a: 'Lions', b: 'Cardinals', prime: null, tag: 'NFC Matchup' },
-      { a: '49ers', b: 'Seahawks', prime: null, tag: 'NFC West Rivalry' },
-      { a: 'Ravens', b: 'Falcons', prime: 'SNF', tag: 'Cross-Conference' },
-    ],
-    6: [
-      { a: 'Seahawks', b: 'Broncos', prime: 'TNF', tag: 'Cross-Conference' },
-      { a: 'Texans', b: 'Jaguars', prime: null, tag: 'AFC South Rivalry' },
-      { a: 'Jets', b: 'Patriots', prime: null, tag: 'AFC East Rivalry' },
-      { a: 'Panthers', b: 'Eagles', prime: null, tag: 'NFC Matchup' },
-      { a: 'Bears', b: 'Falcons', prime: null, tag: 'NFC Matchup' },
-      { a: 'Steelers', b: 'Buccaneers', prime: null, tag: 'Cross-Conference' },
-      { a: 'Saints', b: 'Giants', prime: null, tag: 'NFC Matchup' },
-      { a: 'Titans', b: 'Colts', prime: null, tag: 'AFC South Rivalry' },
-      { a: 'Ravens', b: 'Browns', prime: null, tag: 'AFC North Rivalry' },
-      { a: 'Cardinals', b: 'Rams', prime: null, tag: 'NFC West Rivalry' },
-      { a: 'Bills', b: 'Raiders', prime: null, tag: 'AFC Matchup' },
-      { a: 'Chargers', b: 'Chiefs', prime: null, tag: 'AFC West Rivalry' },
-      { a: 'Cowboys', b: 'Packers', prime: 'SNF', tag: 'NFC Showdown' },
-      { a: 'Commanders', b: '49ers', prime: 'MNF', tag: 'Cross-Conference' },
-    ],
-    7: [
-      { a: 'Patriots', b: 'Bears', prime: 'TNF', tag: 'Cross-Conference' },
-      { a: 'Steelers', b: 'Saints', prime: null, tag: 'Cross-Conference' },
-      { a: 'Colts', b: 'Vikings', prime: null, tag: 'Cross-Conference' },
-      { a: 'Dolphins', b: 'Jets', prime: null, tag: 'AFC East Rivalry' },
-      { a: 'Bengals', b: 'Ravens', prime: null, tag: 'AFC North Rivalry' },
-      { a: 'Browns', b: 'Titans', prime: null, tag: 'AFC Matchup' },
-      { a: 'Buccaneers', b: 'Panthers', prime: null, tag: 'NFC South Rivalry' },
-      { a: '49ers', b: 'Falcons', prime: null, tag: 'NFC Matchup' },
-      { a: 'Giants', b: 'Texans', prime: null, tag: 'Cross-Conference' },
-      { a: 'Broncos', b: 'Cardinals', prime: null, tag: 'Cross-Conference' },
-      { a: 'Packers', b: 'Lions', prime: null, tag: 'NFC North Rivalry' },
-      { a: 'Rams', b: 'Raiders', prime: null, tag: 'LA vs Vegas' },
-      { a: 'Chiefs', b: 'Seahawks', prime: 'SNF', tag: 'AFC vs NFC' },
-      { a: 'Cowboys', b: 'Eagles', prime: 'MNF', tag: 'NFC East Rivalry' },
-    ],
-    8: [
-      { a: 'Panthers', b: 'Packers', prime: 'TNF', tag: 'NFC Matchup' },
-      { a: 'Titans', b: 'Bengals', prime: null, tag: 'AFC Matchup' },
-      { a: 'Colts', b: 'Jaguars', prime: null, tag: 'AFC South Rivalry' },
-      { a: 'Browns', b: 'Steelers', prime: null, tag: 'AFC North Rivalry' },
-      { a: 'Dolphins', b: 'Falcons', prime: null, tag: 'Cross-Conference' },
-      { a: 'Vikings', b: 'Lions', prime: null, tag: 'NFC North Rivalry' },
-      { a: 'Saints', b: 'Rams', prime: null, tag: 'NFC Matchup' },
-      { a: 'Patriots', b: 'Bills', prime: null, tag: 'AFC East Rivalry' },
-      { a: 'Jets', b: 'Dolphins', prime: null, tag: 'AFC East Rivalry' },
-      { a: 'Eagles', b: 'Giants', prime: null, tag: 'NFC East Rivalry' },
-      { a: 'Commanders', b: 'Cowboys', prime: 'SNF', tag: 'NFC East Rivalry' },
-    ],
+    1:  { tnf: { a: '49ers', b: 'Rams' }, snf: { a: 'Cowboys', b: 'Giants' }, mnf: { a: 'Broncos', b: 'Chiefs' } },
+    2:  { tnf: { a: 'Lions', b: 'Bills' }, snf: { a: 'Colts', b: 'Chiefs' }, mnf: { a: 'Giants', b: 'Rams' } },
+    3:  { tnf: { a: 'Falcons', b: 'Packers' }, snf: { a: 'Rams', b: 'Broncos' }, mnf: { a: 'Eagles', b: 'Bears' } },
+    4:  { tnf: { a: 'Steelers', b: 'Browns' }, snf: { a: 'Lions', b: 'Panthers' }, mnf: { a: 'Falcons', b: 'Saints' } },
+    5:  { tnf: { a: 'Buccaneers', b: 'Cowboys' }, snf: { a: 'Ravens', b: 'Falcons' }, mnf: { a: 'Bills', b: 'Rams' } },
+    6:  { tnf: { a: 'Seahawks', b: 'Broncos' }, snf: { a: 'Cowboys', b: 'Packers' }, mnf: { a: 'Commanders', b: '49ers' } },
+    7:  { tnf: { a: 'Patriots', b: 'Bears' }, snf: { a: 'Chiefs', b: 'Seahawks' }, mnf: { a: 'Cowboys', b: 'Eagles' } },
+    8:  { tnf: { a: 'Panthers', b: 'Packers' }, snf: { a: 'Commanders', b: 'Cowboys' }, mnf: { a: 'Bears', b: 'Seahawks' } },
+    9:  { tnf: { a: 'Jaguars', b: 'Ravens' }, snf: { a: 'Eagles', b: 'Commanders' }, mnf: { a: 'Bills', b: 'Vikings' } },
+    10: { tnf: { a: 'Commanders', b: 'Giants' }, snf: { a: 'Buccaneers', b: 'Bears' }, mnf: { a: 'Chargers', b: 'Ravens' } },
+    11: { tnf: { a: 'Colts', b: 'Texans' }, snf: { a: 'Steelers', b: 'Bengals' }, mnf: { a: 'Bengals', b: 'Commanders' } },
+    12: { tnf: { a: 'Chiefs', b: 'Bills' }, snf: { a: 'Patriots', b: 'Chargers' }, mnf: { a: 'Panthers', b: 'Buccaneers' } },
+    13: { tnf: { a: 'Chiefs', b: 'Rams' }, snf: { a: 'Texans', b: 'Steelers' }, mnf: { a: 'Cowboys', b: 'Seahawks' } },
+    14: { tnf: { a: 'Vikings', b: 'Patriots' }, snf: { a: 'Bills', b: 'Packers' }, mnf: { a: 'Steelers', b: 'Jaguars' } },
+    15: { tnf: { a: '49ers', b: 'Chargers' }, snf: { a: 'Lions', b: 'Vikings' }, mnf: { a: 'Patriots', b: 'Chiefs' } },
+    16: { tnf: { a: 'Texans', b: 'Eagles' }, snf: { a: 'Jaguars', b: 'Cowboys' }, mnf: { a: 'Giants', b: 'Lions' } },
+    17: { tnf: { a: 'Ravens', b: 'Bengals' }, snf: { a: 'Eagles', b: '49ers' }, mnf: { a: 'Texans', b: 'Packers' } },
   };
-
-  // Legacy alias for backward compat
-  const PRESETS = SCHEDULE[1] || [];
 
   // --- State Management ---
   function loadState() {
@@ -394,39 +278,45 @@ const App = (() => {
     const week = parseInt(document.getElementById('comm-week').value) || 1;
     const weekGames = SCHEDULE[week];
 
-    // Show presets if we have schedule data for this week
-    if (weekGames && weekGames.length > 0) {
-      const pickerHeader = document.createElement('div');
-      pickerHeader.innerHTML = `
-        <div class="matchup-label regular" style="margin-bottom:4px">Week ${week} — Pick 3 matchups (tap to select)</div>
+    // If we have primetime data, auto-populate the 3 matchups
+    if (weekGames) {
+      const header = document.createElement('div');
+      header.innerHTML = `
+        <div class="matchup-label regular" style="margin-bottom:4px">Week ${week} — Primetime Matchups</div>
         <p style="font-size:0.75rem;color:var(--text-dim);text-align:center;margin-bottom:12px">
-          The 3rd pick becomes the Super Matchup (3x pts).
+          TNF (1 pt) + SNF (1 pt) + MNF = Super Matchup (3x pts). Confirm or edit below.
         </p>`;
-      container.appendChild(pickerHeader);
+      container.appendChild(header);
 
-      weekGames.forEach((p, i) => {
-        const card = document.createElement('div');
-        card.className = 'preset-card';
-        card.id = `preset-${i}`;
-        card.onclick = () => togglePreset(i);
-        const primeBadge = p.prime
-          ? `<span class="prime-badge prime-${p.prime.toLowerCase()}">${p.prime}</span>`
-          : '';
-        card.innerHTML = `
-          <div class="preset-teams">${primeBadge}${p.a} <span class="vs-text">vs</span> ${p.b}</div>
-          <div class="preset-meta">
-            <span class="preset-tag">${p.tag}</span>
+      const preview = document.createElement('div');
+      preview.innerHTML = `
+        <div class="setup-group">
+          <div class="matchup-label regular"><span class="prime-badge prime-tnf">TNF</span> Matchup 1 (1 pt)</div>
+          <div class="setup-row">
+            <input type="text" id="team-0-a" value="${weekGames.tnf.a}" placeholder="Team A">
+            <span class="vs-text">VS</span>
+            <input type="text" id="team-0-b" value="${weekGames.tnf.b}" placeholder="Team B">
           </div>
-          <div class="preset-slot" id="preset-slot-${i}"></div>`;
-        container.appendChild(card);
-      });
-
-      const divider = document.createElement('div');
-      divider.className = 'divider-text';
-      divider.style.marginTop = '16px';
-      divider.textContent = 'or type custom matchups';
-      container.appendChild(divider);
+        </div>
+        <div class="setup-group">
+          <div class="matchup-label regular"><span class="prime-badge prime-snf">SNF</span> Matchup 2 (1 pt)</div>
+          <div class="setup-row">
+            <input type="text" id="team-1-a" value="${weekGames.snf.a}" placeholder="Team A">
+            <span class="vs-text">VS</span>
+            <input type="text" id="team-1-b" value="${weekGames.snf.b}" placeholder="Team B">
+          </div>
+        </div>
+        <div class="setup-group super-setup">
+          <div class="matchup-label super-label"><span class="prime-badge prime-mnf">MNF</span> Super Matchup<span class="super-badge">3x PTS</span></div>
+          <div class="setup-row">
+            <input type="text" id="team-2-a" value="${weekGames.mnf.a}" placeholder="Team A">
+            <span class="vs-text">VS</span>
+            <input type="text" id="team-2-b" value="${weekGames.mnf.b}" placeholder="Team B">
+          </div>
+        </div>`;
+      container.appendChild(preview);
     } else {
+      // No schedule data — full manual entry
       const header = document.createElement('div');
       header.innerHTML = `
         <div class="matchup-label regular" style="margin-bottom:4px">Week ${week} — Set Up Matchups</div>
@@ -434,35 +324,35 @@ const App = (() => {
           Enter 2 regular matchups (1 pt each) + 1 Super Matchup (3x pts).
         </p>`;
       container.appendChild(header);
-    }
 
-    const manual = document.createElement('div');
-    manual.innerHTML = `
-      <div class="setup-group">
-        <div class="matchup-label regular">Matchup 1 (1 pt)</div>
-        <div class="setup-row">
-          <input type="text" id="team-0-a" placeholder="Team A">
-          <span class="vs-text">VS</span>
-          <input type="text" id="team-0-b" placeholder="Team B">
+      const manual = document.createElement('div');
+      manual.innerHTML = `
+        <div class="setup-group">
+          <div class="matchup-label regular">Matchup 1 (1 pt)</div>
+          <div class="setup-row">
+            <input type="text" id="team-0-a" placeholder="Team A">
+            <span class="vs-text">VS</span>
+            <input type="text" id="team-0-b" placeholder="Team B">
+          </div>
         </div>
-      </div>
-      <div class="setup-group">
-        <div class="matchup-label regular">Matchup 2 (1 pt)</div>
-        <div class="setup-row">
-          <input type="text" id="team-1-a" placeholder="Team A">
-          <span class="vs-text">VS</span>
-          <input type="text" id="team-1-b" placeholder="Team B">
+        <div class="setup-group">
+          <div class="matchup-label regular">Matchup 2 (1 pt)</div>
+          <div class="setup-row">
+            <input type="text" id="team-1-a" placeholder="Team A">
+            <span class="vs-text">VS</span>
+            <input type="text" id="team-1-b" placeholder="Team B">
+          </div>
         </div>
-      </div>
-      <div class="setup-group super-setup">
-        <div class="matchup-label super-label">Super Matchup<span class="super-badge">3x PTS</span></div>
-        <div class="setup-row">
-          <input type="text" id="team-2-a" placeholder="Team A">
-          <span class="vs-text">VS</span>
-          <input type="text" id="team-2-b" placeholder="Team B">
-        </div>
-      </div>`;
-    container.appendChild(manual);
+        <div class="setup-group super-setup">
+          <div class="matchup-label super-label">Super Matchup<span class="super-badge">3x PTS</span></div>
+          <div class="setup-row">
+            <input type="text" id="team-2-a" placeholder="Team A">
+            <span class="vs-text">VS</span>
+            <input type="text" id="team-2-b" placeholder="Team B">
+          </div>
+        </div>`;
+      container.appendChild(manual);
+    }
   }
 
   function editWeekSetup() {
@@ -500,64 +390,21 @@ const App = (() => {
   }
 
   function togglePreset(idx) {
-    const week = parseInt(document.getElementById('comm-week').value) || 1;
-    const weekGames = SCHEDULE[week] || [];
-    const pos = selectedPresets.indexOf(idx);
-    if (pos > -1) {
-      selectedPresets.splice(pos, 1);
-    } else if (selectedPresets.length < 3) {
-      selectedPresets.push(idx);
-    }
-    weekGames.forEach((_, i) => {
-      const card = document.getElementById(`preset-${i}`);
-      const slot = document.getElementById(`preset-slot-${i}`);
-      if (!card || !slot) return;
-      const selPos = selectedPresets.indexOf(i);
-      card.classList.remove('preset-selected', 'preset-super-selected');
-      slot.textContent = '';
-      if (selPos > -1) {
-        const isSuper = selPos === 2;
-        card.classList.add(isSuper ? 'preset-super-selected' : 'preset-selected');
-        slot.textContent = isSuper ? 'SUPER MATCHUP (3x)' : `Matchup ${selPos + 1}`;
-        slot.style.color = isSuper ? 'var(--super)' : 'var(--accent)';
-      }
-    });
-    for (let si = 0; si < 3; si++) {
-      const aEl = document.getElementById(`team-${si}-a`);
-      const bEl = document.getElementById(`team-${si}-b`);
-      if (aEl && bEl) {
-        if (si < selectedPresets.length) {
-          const p = weekGames[selectedPresets[si]];
-          aEl.value = p.a;
-          bEl.value = p.b;
-        } else {
-          aEl.value = '';
-          bEl.value = '';
-        }
-      }
-    }
+    // No longer needed — primetime matchups auto-populate
   }
 
   function generateLink() {
     const week = parseInt(document.getElementById('comm-week').value) || 1;
     let matchups = [];
 
-    if (selectedPresets.length === 3) {
-      matchups = selectedPresets.map((pi, si) => ({
-        a: PRESETS[pi].a,
-        b: PRESETS[pi].b,
-        isSuper: si === 2
-      }));
-    } else {
-      for (let i = 0; i < 3; i++) {
-        const a = (document.getElementById(`team-${i}-a`) || {}).value || '';
-        const b = (document.getElementById(`team-${i}-b`) || {}).value || '';
-        if (!a.trim() || !b.trim()) {
-          alert('Either tap 3 preset matchups OR fill in all custom fields');
-          return;
-        }
-        matchups.push({ a: a.trim(), b: b.trim(), isSuper: i === 2 });
+    for (let i = 0; i < 3; i++) {
+      const a = (document.getElementById(`team-${i}-a`) || {}).value || '';
+      const b = (document.getElementById(`team-${i}-b`) || {}).value || '';
+      if (!a.trim() || !b.trim()) {
+        alert('All matchup fields must be filled in');
+        return;
       }
+      matchups.push({ a: a.trim(), b: b.trim(), isSuper: i === 2 });
     }
 
     const data = { week, matchups };
