@@ -354,7 +354,6 @@ const App = (() => {
     const name = document.getElementById('player-name').value.trim();
     if (!name) { alert('Enter your name'); return; }
     currentPlayer = name;
-    if (!state.players[name]) state.players[name] = {};
 
     const data = parseURL();
     let weekData;
@@ -366,16 +365,39 @@ const App = (() => {
       weekData = data;
     }
 
-    // Check if player already locked in picks for this week
-    const existing = state.players[name] && state.players[name][weekData.week];
-    if (existing && existing.picks && Object.keys(existing.picks).length > 0) {
-      currentPicks = { ...existing.picks };
-      tiebreakerScore = existing.tiebreaker || '';
-      renderConfirmation(weekData);
-      return;
-    }
-
-    loadVotingScreen(weekData);
+    // Check Firebase directly for existing picks (most reliable)
+    const week = weekData.week;
+    db.ref(`state/players/${name}/${week}`).once('value').then(snapshot => {
+      const existing = snapshot.val();
+      if (existing && existing.picks && Object.keys(existing.picks).length > 0) {
+        // Already picked — show their locked confirmation
+        currentPicks = { ...existing.picks };
+        tiebreakerScore = existing.tiebreaker || '';
+        renderConfirmation(weekData);
+      } else {
+        // Also check local state as fallback
+        const localExisting = state.players[name] && state.players[name][week];
+        if (localExisting && localExisting.picks && Object.keys(localExisting.picks).length > 0) {
+          currentPicks = { ...localExisting.picks };
+          tiebreakerScore = localExisting.tiebreaker || '';
+          renderConfirmation(weekData);
+        } else {
+          if (!state.players[name]) state.players[name] = {};
+          loadVotingScreen(weekData);
+        }
+      }
+    }).catch(() => {
+      // Firebase offline — use local state
+      const localExisting = state.players[name] && state.players[name][week];
+      if (localExisting && localExisting.picks && Object.keys(localExisting.picks).length > 0) {
+        currentPicks = { ...localExisting.picks };
+        tiebreakerScore = localExisting.tiebreaker || '';
+        renderConfirmation(weekData);
+      } else {
+        if (!state.players[name]) state.players[name] = {};
+        loadVotingScreen(weekData);
+      }
+    });
   }
 
   function loadVotingScreen(data) {
