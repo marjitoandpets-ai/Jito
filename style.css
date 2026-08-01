@@ -27,6 +27,7 @@ body {
 }
 
 #app { max-width: 480px; margin: 0 auto; padding: 16px; }
+header { position: relative; }
 
 header { text-align: center; padding: 24px 0 8px; }
 header h1 {
