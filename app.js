@@ -33,14 +33,142 @@ const App = (() => {
   };
   const NAME_TO_CODE = Object.fromEntries(Object.entries(TEAMS).map(([k,v]) => [v,k]));
 
-  // Week 1 2026 presets
-  const PRESETS = [
-    { a: 'Bills', b: 'Texans', spread: '1.5', tag: 'AFC Heavyweights', prime: null },
-    { a: 'Packers', b: 'Vikings', spread: '1.5', tag: 'NFC North Rivalry', prime: null },
-    { a: 'Cowboys', b: 'Giants', spread: '2.5', tag: 'NFC East Rivalry', prime: 'SNF' },
-    { a: '49ers', b: 'Rams', spread: '2.5', tag: 'Melbourne Showdown', prime: 'TNF' },
-    { a: 'Broncos', b: 'Chiefs', spread: '2.5', tag: 'AFC West', prime: 'MNF' },
-  ];
+  // NFL 2026 full schedule by week (away @ home shown as a vs b)
+  const SCHEDULE = {
+    1: [
+      { a: '49ers', b: 'Rams', prime: 'TNF', tag: 'Melbourne Showdown' },
+      { a: 'Bills', b: 'Texans', prime: null, tag: 'AFC Heavyweights' },
+      { a: 'Buccaneers', b: 'Bengals', prime: null, tag: 'Cross-Conference' },
+      { a: 'Saints', b: 'Lions', prime: null, tag: 'NFC Clash' },
+      { a: 'Jets', b: 'Titans', prime: null, tag: 'AFC Matchup' },
+      { a: 'Ravens', b: 'Colts', prime: null, tag: 'AFC South Visit' },
+      { a: 'Falcons', b: 'Steelers', prime: null, tag: 'Cross-Conference' },
+      { a: 'Bears', b: 'Panthers', prime: null, tag: 'NFC Matchup' },
+      { a: 'Browns', b: 'Jaguars', prime: null, tag: 'AFC Matchup' },
+      { a: 'Cardinals', b: 'Chargers', prime: null, tag: 'West Coast' },
+      { a: 'Packers', b: 'Vikings', prime: null, tag: 'NFC North Rivalry' },
+      { a: 'Dolphins', b: 'Raiders', prime: null, tag: 'AFC Matchup' },
+      { a: 'Commanders', b: 'Eagles', prime: null, tag: 'NFC East Rivalry' },
+      { a: 'Cowboys', b: 'Giants', prime: 'SNF', tag: 'NFC East Rivalry' },
+      { a: 'Broncos', b: 'Chiefs', prime: 'MNF', tag: 'AFC West Rivalry' },
+    ],
+    2: [
+      { a: 'Lions', b: 'Bills', prime: 'TNF', tag: 'Heavyweight Clash' },
+      { a: 'Steelers', b: 'Patriots', prime: null, tag: 'AFC North vs East' },
+      { a: 'Panthers', b: 'Falcons', prime: null, tag: 'NFC South' },
+      { a: 'Vikings', b: 'Bears', prime: null, tag: 'NFC North Rivalry' },
+      { a: 'Bengals', b: 'Texans', prime: null, tag: 'AFC Matchup' },
+      { a: 'Browns', b: 'Buccaneers', prime: null, tag: 'Cross-Conference' },
+      { a: 'Saints', b: 'Ravens', prime: null, tag: 'Cross-Conference' },
+      { a: 'Eagles', b: 'Titans', prime: null, tag: 'Cross-Conference' },
+      { a: 'Packers', b: 'Jets', prime: null, tag: 'Cross-Conference' },
+      { a: 'Jaguars', b: 'Broncos', prime: null, tag: 'AFC Matchup' },
+      { a: 'Raiders', b: 'Chargers', prime: null, tag: 'AFC West Rivalry' },
+      { a: 'Seahawks', b: 'Cardinals', prime: null, tag: 'NFC West' },
+      { a: 'Dolphins', b: '49ers', prime: null, tag: 'Cross-Conference' },
+      { a: 'Commanders', b: 'Cowboys', prime: null, tag: 'NFC East Rivalry' },
+      { a: 'Colts', b: 'Chiefs', prime: 'SNF', tag: 'AFC Showdown' },
+      { a: 'Giants', b: 'Rams', prime: 'MNF', tag: 'Cross-Conference' },
+    ],
+    3: [
+      { a: 'Falcons', b: 'Packers', prime: 'TNF', tag: 'NFC Matchup' },
+      { a: 'Chargers', b: 'Bills', prime: null, tag: 'AFC Heavyweights' },
+      { a: 'Panthers', b: 'Browns', prime: null, tag: 'Cross-Conference' },
+      { a: 'Jets', b: 'Lions', prime: null, tag: 'Cross-Conference' },
+      { a: 'Texans', b: 'Colts', prime: null, tag: 'AFC South Rivalry' },
+      { a: 'Chiefs', b: 'Dolphins', prime: null, tag: 'AFC Rematch' },
+      { a: 'Titans', b: 'Giants', prime: null, tag: 'Cross-Conference' },
+      { a: 'Bengals', b: 'Steelers', prime: null, tag: 'AFC North Rivalry' },
+      { a: 'Seahawks', b: 'Commanders', prime: null, tag: 'Cross-Conference' },
+      { a: 'Patriots', b: 'Jaguars', prime: null, tag: 'AFC Matchup' },
+      { a: 'Cardinals', b: '49ers', prime: null, tag: 'NFC West Rivalry' },
+      { a: 'Vikings', b: 'Buccaneers', prime: null, tag: 'NFC Matchup' },
+      { a: 'Ravens', b: 'Cowboys', prime: null, tag: 'Rio de Janeiro' },
+      { a: 'Raiders', b: 'Saints', prime: null, tag: 'AFC vs NFC' },
+      { a: 'Rams', b: 'Broncos', prime: 'SNF', tag: 'Cross-Conference' },
+      { a: 'Eagles', b: 'Bears', prime: 'MNF', tag: 'NFC Matchup' },
+    ],
+    4: [
+      { a: 'Steelers', b: 'Browns', prime: 'TNF', tag: 'AFC North Rivalry' },
+      { a: 'Colts', b: 'Commanders', prime: null, tag: 'London' },
+      { a: 'Jets', b: 'Bears', prime: null, tag: 'Cross-Conference' },
+      { a: 'Cardinals', b: 'Giants', prime: null, tag: 'Cross-Conference' },
+      { a: 'Rams', b: 'Eagles', prime: null, tag: 'NFC Matchup' },
+      { a: 'Patriots', b: 'Bills', prime: null, tag: 'AFC East Rivalry' },
+      { a: 'Titans', b: 'Ravens', prime: null, tag: 'AFC Matchup' },
+      { a: 'Dolphins', b: 'Panthers', prime: null, tag: 'Cross-Conference' },
+      { a: 'Vikings', b: 'Steelers', prime: null, tag: 'Cross-Conference' },
+      { a: 'Raiders', b: 'Chargers', prime: null, tag: 'AFC West Rivalry' },
+      { a: 'Cowboys', b: 'Saints', prime: null, tag: 'NFC Matchup' },
+      { a: 'Broncos', b: 'Chiefs', prime: null, tag: 'AFC West Rivalry' },
+      { a: 'Bengals', b: 'Packers', prime: 'SNF', tag: 'Cross-Conference' },
+      { a: 'Giants', b: 'Seahawks', prime: 'MNF', tag: 'Cross-Conference' },
+    ],
+    5: [
+      { a: 'Buccaneers', b: 'Cowboys', prime: 'TNF', tag: 'NFC Matchup' },
+      { a: 'Eagles', b: 'Jaguars', prime: null, tag: 'London' },
+      { a: 'Bengals', b: 'Dolphins', prime: null, tag: 'AFC Matchup' },
+      { a: 'Browns', b: 'Jets', prime: null, tag: 'AFC Matchup' },
+      { a: 'Texans', b: 'Titans', prime: null, tag: 'AFC South Rivalry' },
+      { a: 'Colts', b: 'Steelers', prime: null, tag: 'AFC Matchup' },
+      { a: 'Raiders', b: 'Patriots', prime: null, tag: 'AFC Matchup' },
+      { a: 'Vikings', b: 'Saints', prime: null, tag: 'NFC Matchup' },
+      { a: 'Giants', b: 'Commanders', prime: null, tag: 'NFC East Rivalry' },
+      { a: 'Broncos', b: 'Chargers', prime: null, tag: 'AFC West Rivalry' },
+      { a: 'Bears', b: 'Packers', prime: null, tag: 'NFC North Rivalry' },
+      { a: 'Lions', b: 'Cardinals', prime: null, tag: 'NFC Matchup' },
+      { a: '49ers', b: 'Seahawks', prime: null, tag: 'NFC West Rivalry' },
+      { a: 'Ravens', b: 'Falcons', prime: 'SNF', tag: 'Cross-Conference' },
+    ],
+    6: [
+      { a: 'Seahawks', b: 'Broncos', prime: 'TNF', tag: 'Cross-Conference' },
+      { a: 'Texans', b: 'Jaguars', prime: null, tag: 'AFC South Rivalry' },
+      { a: 'Jets', b: 'Patriots', prime: null, tag: 'AFC East Rivalry' },
+      { a: 'Panthers', b: 'Eagles', prime: null, tag: 'NFC Matchup' },
+      { a: 'Bears', b: 'Falcons', prime: null, tag: 'NFC Matchup' },
+      { a: 'Steelers', b: 'Buccaneers', prime: null, tag: 'Cross-Conference' },
+      { a: 'Saints', b: 'Giants', prime: null, tag: 'NFC Matchup' },
+      { a: 'Titans', b: 'Colts', prime: null, tag: 'AFC South Rivalry' },
+      { a: 'Ravens', b: 'Browns', prime: null, tag: 'AFC North Rivalry' },
+      { a: 'Cardinals', b: 'Rams', prime: null, tag: 'NFC West Rivalry' },
+      { a: 'Bills', b: 'Raiders', prime: null, tag: 'AFC Matchup' },
+      { a: 'Chargers', b: 'Chiefs', prime: null, tag: 'AFC West Rivalry' },
+      { a: 'Cowboys', b: 'Packers', prime: 'SNF', tag: 'NFC Showdown' },
+      { a: 'Commanders', b: '49ers', prime: 'MNF', tag: 'Cross-Conference' },
+    ],
+    7: [
+      { a: 'Patriots', b: 'Bears', prime: 'TNF', tag: 'Cross-Conference' },
+      { a: 'Steelers', b: 'Saints', prime: null, tag: 'Cross-Conference' },
+      { a: 'Colts', b: 'Vikings', prime: null, tag: 'Cross-Conference' },
+      { a: 'Dolphins', b: 'Jets', prime: null, tag: 'AFC East Rivalry' },
+      { a: 'Bengals', b: 'Ravens', prime: null, tag: 'AFC North Rivalry' },
+      { a: 'Browns', b: 'Titans', prime: null, tag: 'AFC Matchup' },
+      { a: 'Buccaneers', b: 'Panthers', prime: null, tag: 'NFC South Rivalry' },
+      { a: '49ers', b: 'Falcons', prime: null, tag: 'NFC Matchup' },
+      { a: 'Giants', b: 'Texans', prime: null, tag: 'Cross-Conference' },
+      { a: 'Broncos', b: 'Cardinals', prime: null, tag: 'Cross-Conference' },
+      { a: 'Packers', b: 'Lions', prime: null, tag: 'NFC North Rivalry' },
+      { a: 'Rams', b: 'Raiders', prime: null, tag: 'LA vs Vegas' },
+      { a: 'Chiefs', b: 'Seahawks', prime: 'SNF', tag: 'AFC vs NFC' },
+      { a: 'Cowboys', b: 'Eagles', prime: 'MNF', tag: 'NFC East Rivalry' },
+    ],
+    8: [
+      { a: 'Panthers', b: 'Packers', prime: 'TNF', tag: 'NFC Matchup' },
+      { a: 'Titans', b: 'Bengals', prime: null, tag: 'AFC Matchup' },
+      { a: 'Colts', b: 'Jaguars', prime: null, tag: 'AFC South Rivalry' },
+      { a: 'Browns', b: 'Steelers', prime: null, tag: 'AFC North Rivalry' },
+      { a: 'Dolphins', b: 'Falcons', prime: null, tag: 'Cross-Conference' },
+      { a: 'Vikings', b: 'Lions', prime: null, tag: 'NFC North Rivalry' },
+      { a: 'Saints', b: 'Rams', prime: null, tag: 'NFC Matchup' },
+      { a: 'Patriots', b: 'Bills', prime: null, tag: 'AFC East Rivalry' },
+      { a: 'Jets', b: 'Dolphins', prime: null, tag: 'AFC East Rivalry' },
+      { a: 'Eagles', b: 'Giants', prime: null, tag: 'NFC East Rivalry' },
+      { a: 'Commanders', b: 'Cowboys', prime: 'SNF', tag: 'NFC East Rivalry' },
+    ],
+  };
+
+  // Legacy alias for backward compat
+  const PRESETS = SCHEDULE[1] || [];
 
   // --- State Management ---
   function loadState() {
@@ -264,18 +392,19 @@ const App = (() => {
     container.innerHTML = '';
 
     const week = parseInt(document.getElementById('comm-week').value) || 1;
+    const weekGames = SCHEDULE[week];
 
-    // Only show presets for Week 1
-    if (week === 1) {
+    // Show presets if we have schedule data for this week
+    if (weekGames && weekGames.length > 0) {
       const pickerHeader = document.createElement('div');
       pickerHeader.innerHTML = `
-        <div class="matchup-label regular" style="margin-bottom:4px">Pick 3 matchups (tap to select)</div>
+        <div class="matchup-label regular" style="margin-bottom:4px">Week ${week} — Pick 3 matchups (tap to select)</div>
         <p style="font-size:0.75rem;color:var(--text-dim);text-align:center;margin-bottom:12px">
-          The 3rd pick becomes the Super Matchup (3x pts). Sorted by tightest spread.
+          The 3rd pick becomes the Super Matchup (3x pts).
         </p>`;
       container.appendChild(pickerHeader);
 
-      PRESETS.forEach((p, i) => {
+      weekGames.forEach((p, i) => {
         const card = document.createElement('div');
         card.className = 'preset-card';
         card.id = `preset-${i}`;
@@ -286,7 +415,6 @@ const App = (() => {
         card.innerHTML = `
           <div class="preset-teams">${primeBadge}${p.a} <span class="vs-text">vs</span> ${p.b}</div>
           <div class="preset-meta">
-            <span class="preset-spread">Spread: ${p.spread}</span>
             <span class="preset-tag">${p.tag}</span>
           </div>
           <div class="preset-slot" id="preset-slot-${i}"></div>`;
@@ -372,15 +500,18 @@ const App = (() => {
   }
 
   function togglePreset(idx) {
+    const week = parseInt(document.getElementById('comm-week').value) || 1;
+    const weekGames = SCHEDULE[week] || [];
     const pos = selectedPresets.indexOf(idx);
     if (pos > -1) {
       selectedPresets.splice(pos, 1);
     } else if (selectedPresets.length < 3) {
       selectedPresets.push(idx);
     }
-    PRESETS.forEach((_, i) => {
+    weekGames.forEach((_, i) => {
       const card = document.getElementById(`preset-${i}`);
       const slot = document.getElementById(`preset-slot-${i}`);
+      if (!card || !slot) return;
       const selPos = selectedPresets.indexOf(i);
       card.classList.remove('preset-selected', 'preset-super-selected');
       slot.textContent = '';
@@ -396,7 +527,7 @@ const App = (() => {
       const bEl = document.getElementById(`team-${si}-b`);
       if (aEl && bEl) {
         if (si < selectedPresets.length) {
-          const p = PRESETS[selectedPresets[si]];
+          const p = weekGames[selectedPresets[si]];
           aEl.value = p.a;
           bEl.value = p.b;
         } else {
