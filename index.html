@@ -1,0 +1,131 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Gridiron Picks - Weekly Matchup Challenge</title>
+  <link rel="stylesheet" href="./style.css">
+</head>
+<body>
+  <div id="app">
+    <header>
+      <h1>GRIDIRON PICKS</h1>
+      <p class="tagline">Weekly Matchup Challenge</p>
+    </header>
+
+    <!-- Landing / Player Name -->
+    <div id="screen-landing" class="screen active">
+      <div class="card glass">
+        <h2>Enter Your Name</h2>
+        <input type="text" id="player-name" placeholder="Your name" autocomplete="off">
+        <button class="btn primary" onclick="App.enterPlayer()">Lock In</button>
+        <div class="divider-text">or</div>
+        <button class="btn ghost" onclick="App.showScreen('screen-commissioner')">Commissioner Mode</button>
+      </div>
+    </div>
+
+    <!-- Commissioner: Set Up Matchups -->
+    <div id="screen-commissioner" class="screen">
+      <div class="card glass">
+        <h2>Set Up This Week</h2>
+        <label>Week Number</label>
+        <input type="number" id="comm-week" min="1" max="18" value="1">
+
+        <div class="matchup-setup" id="matchup-setups"></div>
+        <button class="btn primary" onclick="App.generateLink()">Generate Shareable Link</button>
+        <div id="share-link-box" class="hidden">
+          <p class="label">Share this link with your league:</p>
+          <input type="text" id="share-link" readonly>
+          <button class="btn secondary" onclick="App.copyLink()">Copy Link</button>
+        </div>
+        <div class="divider-text">manage</div>
+        <button class="btn secondary" onclick="App.showScreen('screen-dashboard')">Commissioner Dashboard</button>
+        <button class="btn ghost" onclick="App.showScreen('screen-results')">Enter Results</button>
+        <button class="btn ghost" onclick="App.showScreen('screen-landing')">Back</button>
+      </div>
+    </div>
+
+    <!-- Voting Screen -->
+    <div id="screen-vote" class="screen">
+      <div id="week-label" class="week-badge">WEEK 1</div>
+      <div id="player-badge" class="player-badge"></div>
+      <div id="matchup-cards"></div>
+      <button class="btn primary full-width" id="submit-picks-btn" onclick="App.submitPicks()" disabled>
+        Lock In Picks
+      </button>
+    </div>
+
+    <!-- Pick Confirmation / Shareable Card -->
+    <div id="screen-confirm" class="screen">
+      <div class="card glass confirm-card" id="pick-card">
+        <div class="pick-card-header">
+          <h2>PICKS LOCKED</h2>
+          <p id="confirm-player"></p>
+          <p id="confirm-week"></p>
+        </div>
+        <div id="confirm-picks"></div>
+      </div>
+      <button class="btn primary" onclick="App.downloadMyPicks()">Download My Picks</button>
+      <p class="hint">Download and send to your commish, or screenshot and share</p>
+      <button class="btn secondary" onclick="App.showScreen('screen-leaderboard')">View Leaderboard</button>
+    </div>
+
+    <!-- Results Entry (Commissioner) -->
+    <div id="screen-results" class="screen">
+      <div class="card glass">
+        <h2>Enter Results</h2>
+        <label>Week</label>
+        <input type="number" id="results-week" min="1" max="18" value="1" onchange="App.loadResultsWeek()">
+        <div id="results-matchups"></div>
+        <h3>Record Player Picks</h3>
+        <div id="player-pick-entry"></div>
+        <button class="btn primary" onclick="App.saveResults()">Save Results</button>
+        <button class="btn ghost" onclick="App.showScreen('screen-leaderboard')">View Leaderboard</button>
+        <button class="btn ghost" onclick="App.showScreen('screen-commissioner')">Back</button>
+      </div>
+    </div>
+
+    <!-- Commissioner Dashboard -->
+    <div id="screen-dashboard" class="screen">
+      <div class="card glass">
+        <h2>Commissioner Dashboard</h2>
+
+        <!-- Standings Overview -->
+        <div class="dash-section">
+          <h3>Current Standings</h3>
+          <div id="dash-standings"></div>
+        </div>
+
+        <!-- Week-by-Week History -->
+        <div class="dash-section">
+          <h3>Week-by-Week History</h3>
+          <div id="dash-history"></div>
+        </div>
+
+        <div class="divider-text">actions</div>
+        <button class="btn secondary" onclick="App.showScreen('screen-results')">Edit Results / Picks</button>
+        <button class="btn secondary" onclick="App.showScreen('screen-commissioner')">Set Up New Week</button>
+        <div class="divider-text">data</div>
+        <button class="btn secondary" onclick="App.triggerImport()">Import Player Picks</button>
+        <input type="file" id="import-file" accept=".json" multiple style="display:none" onchange="App.handleImport(this.files)">
+        <div id="import-status" class="hidden"></div>
+        <button class="btn ghost" onclick="App.exportData()">Export All Data (JSON)</button>
+        <button class="btn ghost" onclick="App.importFullData()">Import Full Backup</button>
+        <input type="file" id="import-full-file" accept=".json" style="display:none" onchange="App.handleFullImport(this.files)">
+        <button class="btn ghost" onclick="App.showScreen('screen-landing')">Back</button>
+      </div>
+    </div>
+
+    <!-- Leaderboard -->
+    <div id="screen-leaderboard" class="screen">
+      <div class="card glass">
+        <h2>Leaderboard</h2>
+        <div id="leaderboard-table"></div>
+        <button class="btn ghost" onclick="App.showScreen('screen-landing')">Back</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="./app.js"></script>
+</body>
+</html>
