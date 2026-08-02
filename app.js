@@ -286,18 +286,19 @@ const App = (() => {
 
     // If this week already has matchups, show locked view
     if (existingWeek && existingWeek.matchups && existingWeek.matchups.length > 0) {
-      let html = '<div class="divider-text">week ' + week + ' matchups locked</div>';
+      let html = '<div class="divider-text">week ' + week + ' matchups locked ✓</div>';
       existingWeek.matchups.forEach((m, i) => {
         const label = m.isSuper ? 'SUPER' : `Matchup ${i + 1}`;
         html += `<div class="live-pick-row"><span class="live-pick-name">${label}</span><span class="live-pick-teams">${teamBadge(m.a)} vs ${teamBadge(m.b)}</span></div>`;
       });
       html += `<div style="display:flex;gap:8px;margin-top:12px">`;
-      html += `<button class="btn ghost" style="flex:1" onclick="App.editWeekSetup()">Edit Week ${week}</button>`;
-      html += `<button class="btn secondary" style="flex:1" onclick="App.nextWeek()">+ Next Week</button>`;
+      html += `<button class="btn ghost" style="flex:1" onclick="App.editWeekSetup()">Unlock & Edit</button>`;
       html += `</div>`;
       container.innerHTML = html;
 
-      // Keep hash updated but hide share link box on locked view
+      // Hide confirm button for already-locked weeks
+      document.getElementById('confirm-week-btn').classList.add('hidden');
+      // Keep hash updated but hide share link box
       const hash = encodeHash(existingWeek);
       window.location.hash = hash;
       document.getElementById('share-link-box').classList.add('hidden');
@@ -308,6 +309,7 @@ const App = (() => {
 
     // Fresh setup — show preset picker
     renderMatchupPicker();
+    document.getElementById('confirm-week-btn').classList.remove('hidden');
     document.getElementById('share-link-box').classList.add('hidden');
   }
 
@@ -427,6 +429,18 @@ const App = (() => {
 
   function onCommWeekChange() {
     initCommissioner();
+  }
+
+  function browseWeek(direction) {
+    const weekEl = document.getElementById('comm-week');
+    const current = parseInt(weekEl.value) || 1;
+    const next = Math.max(1, Math.min(18, current + direction));
+    weekEl.value = next;
+    // Clear hash so it doesn't interfere
+    window.location.hash = '';
+    _commWeekOverride = next;
+    initCommissioner(next);
+    setTimeout(() => { _commWeekOverride = null; }, 3000);
   }
 
   function togglePreset(idx) {
@@ -1226,6 +1240,6 @@ const App = (() => {
     togglePreset, exportData, downloadMyPicks,
     triggerImport, handleImport, importFullData, handleFullImport,
     showAllPicks, renderAllPicks, resetWeekSetup, onCommWeekChange,
-    editWeekSetup, nextWeek, resetPlayerPicks
+    editWeekSetup, nextWeek, resetPlayerPicks, browseWeek
   };
 })();

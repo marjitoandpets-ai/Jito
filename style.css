@@ -41,6 +41,35 @@ header { position: relative; }
   margin-right: 4px;
 }
 
+.week-nav {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+.week-nav-label {
+  flex: 1;
+  text-align: center;
+}
+.week-nav-label label {
+  font-size: 0.65rem;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  color: var(--text-dim);
+}
+.week-nav-label input {
+  width: 60px;
+  text-align: center;
+  margin: 0 auto;
+  display: block;
+}
+.week-nav-btn {
+  font-size: 1.2rem;
+  padding: 8px 14px;
+  min-width: 44px;
+}
+.hidden { display: none !important; }
+
 header { text-align: center; padding: 24px 0 8px; }
 header h1 {
   font-size: 1.4rem; font-weight: 800; letter-spacing: 2px;
