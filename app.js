@@ -1044,6 +1044,22 @@ const App = (() => {
     }
   }
 
+  function resetAllData() {
+    if (!confirm('NUCLEAR RESET: This will delete ALL picks, results, and week data for everyone. Are you sure?')) return;
+    if (!confirm('Seriously — this cannot be undone. Confirm one more time.')) return;
+    state = { players: {}, weeks: {}, results: {} };
+    localStorage.removeItem(STORAGE_KEY);
+    localStorage.removeItem('marjitos_player_name');
+    sessionStorage.removeItem('marjitos_last_screen');
+    db.ref('state').set(null).then(() => {
+      alert('All data wiped. Reloading...');
+      window.location.hash = '';
+      window.location.reload();
+    }).catch(err => {
+      alert('Firebase wipe failed: ' + err.message);
+    });
+  }
+
   // --- Player Stats ---
   function renderMyStats() {
     const name = currentPlayer;
@@ -1240,6 +1256,6 @@ const App = (() => {
     togglePreset, exportData, downloadMyPicks,
     triggerImport, handleImport, importFullData, handleFullImport,
     showAllPicks, renderAllPicks, resetWeekSetup, onCommWeekChange,
-    editWeekSetup, nextWeek, resetPlayerPicks, browseWeek
+    editWeekSetup, nextWeek, resetPlayerPicks, browseWeek, resetAllData
   };
 })();
