@@ -321,7 +321,7 @@ const App = (() => {
     });
   }
 
-  const APP_VERSION = '53';
+  const APP_VERSION = '54';
 
   function updateLoggedInBar() {
     const bar = document.getElementById('logged-in-bar');
@@ -1102,9 +1102,14 @@ const App = (() => {
       // Season totals view
       const sorted = Object.entries(totals).sort((a, b) => b[1] - a[1]);
       html += '<table class="lb-table"><thead><tr><th></th><th>Player</th><th>Pts</th></tr></thead><tbody>';
+      let rank = 1;
       sorted.forEach(([name, pts], i) => {
-        const medal = i === 0 ? '&#127942;' : i === 1 ? '&#129352;' : i === 2 ? '&#129353;' : '';
-        html += `<tr><td class="lb-rank">${medal || i + 1}</td><td>${esc(name)}</td><td>${pts}</td></tr>`;
+        // Competition ranking: if this player's score differs from the previous, rank = position
+        if (i > 0 && pts < sorted[i - 1][1]) rank = i + 1;
+        const medal = rank === 1 && pts > 0 ? '&#127942;' : rank === 2 && pts > 0 ? '&#129352;' : rank === 3 && pts > 0 ? '&#129353;' : '';
+        const display = medal || rank;
+        const ptsDisplay = pts === 0 ? '—' : pts;
+        html += `<tr><td class="lb-rank">${display}</td><td>${esc(name)}</td><td>${ptsDisplay}</td></tr>`;
       });
       html += '</tbody></table>';
     } else {
@@ -1146,8 +1151,10 @@ const App = (() => {
         weekScores.sort((a, b) => b.pts - a.pts);
 
         html += '<table class="lb-table" style="margin-top:8px"><thead><tr><th></th><th>Player</th><th>Picks</th><th>Pts</th></tr></thead><tbody>';
+        let wRank = 1;
         weekScores.forEach(({ name, pts, hasPicks, pw }, i) => {
-          const medal = hasPicks && hasResults ? (i === 0 ? '&#127942;' : i === 1 ? '&#129352;' : i === 2 ? '&#129353;' : '') : '';
+          if (i > 0 && pts < weekScores[i - 1].pts) wRank = i + 1;
+          const medal = hasPicks && hasResults && pts > 0 ? (wRank === 1 ? '&#127942;' : wRank === 2 ? '&#129352;' : wRank === 3 ? '&#129353;' : '') : '';
           let picksStr = '<span style="color:var(--text-dim);font-size:0.75rem">—</span>';
           if (hasPicks && wd) {
             picksStr = wd.matchups.map((m, mi) => {
@@ -1159,7 +1166,8 @@ const App = (() => {
               return `<span class="pick-pending">${pickName}</span>`;
             }).join(', ');
           }
-          html += `<tr><td class="lb-rank">${medal || i + 1}</td><td>${esc(name)}</td><td style="font-size:0.75rem">${picksStr}</td><td>${hasPicks ? pts : '—'}</td></tr>`;
+          const ptsDisplay = hasPicks ? (pts === 0 ? '—' : pts) : '—';
+          html += `<tr><td class="lb-rank">${medal || wRank}</td><td>${esc(name)}</td><td style="font-size:0.75rem">${picksStr}</td><td>${ptsDisplay}</td></tr>`;
         });
         html += '</tbody></table>';
       }
