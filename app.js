@@ -221,19 +221,7 @@ const App = (() => {
         if (_renderTimer) clearTimeout(_renderTimer);
         _renderTimer = setTimeout(() => {
           _renderTimer = null;
-          const activeScreen = document.querySelector('.screen.active');
-          if (activeScreen) {
-            const id = activeScreen.id;
-            if (id === 'screen-dashboard') renderDashboard();
-            if (id === 'screen-leaderboard') renderLeaderboard();
-            if (id === 'screen-results') loadResultsWeek();
-            if (id === 'screen-commissioner') { if (!_commWeekOverride) initCommissioner(); updateLiveFeed(); }
-            if (id === 'screen-all-picks') renderAllPicks();
-            if (id === 'screen-confirm') {
-              const data = parseURL() || state.weeks[Object.keys(state.weeks).sort((a, b) => b - a)[0]];
-              if (data) renderPickCounter(data);
-            }
-          }
+          refreshActiveScreen();
         }, 400);
       } else {
         // First time — push local state to Firebase
@@ -247,6 +235,45 @@ const App = (() => {
       firebaseReady = true;
     });
   }
+
+  // Force a one-shot sync on reload — guarantees fresh state even if the
+  // real-time listener is slow to fire the first callback
+  function syncOnce() {
+    db.ref('state').once('value').then(snap => {
+      const remote = snap.val();
+      if (remote) {
+        state = { players: remote.players || {}, weeks: remote.weeks || {}, results: remote.results || {} };
+        ensureAllWeeksLoaded();
+        saveLocal();
+        firebaseReady = true;
+        // Re-render current screen
+        refreshActiveScreen();
+      }
+    }).catch(() => {});
+  }
+
+  // Re-render whatever screen is active (shared by listener + sync helpers)
+  function refreshActiveScreen() {
+    const activeScreen = document.querySelector('.screen.active');
+    if (!activeScreen) return;
+    const id = activeScreen.id;
+    if (id === 'screen-dashboard') renderDashboard();
+    if (id === 'screen-leaderboard') renderLeaderboard();
+    if (id === 'screen-results') loadResultsWeek();
+    if (id === 'screen-commissioner') { if (!_commWeekOverride) initCommissioner(); updateLiveFeed(); }
+    if (id === 'screen-all-picks') renderAllPicks();
+    if (id === 'screen-confirm') {
+      const data = parseURL() || state.weeks[Object.keys(state.weeks).sort((a, b) => b - a)[0]];
+      if (data) renderPickCounter(data);
+    }
+    if (id === 'screen-my-stats') renderMyStats();
+    if (id === 'screen-landing') updateLandingInfo();
+  }
+
+  // Re-sync when the app comes back from background (mobile tab switch, lock screen, etc.)
+  document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState === 'visible') syncOnce();
+  });
 
   // --- Screen Navigation ---
   function isAdmin() {
@@ -379,6 +406,7 @@ const App = (() => {
     }
 
     initFirebase();
+    syncOnce();  // Redundant one-shot fetch — guarantees fresh state on reload
     ensureAllWeeksLoaded();
     const data = parseURL();
     if (data && data.matchups && !state.weeks[data.week]) {
