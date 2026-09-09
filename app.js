@@ -17,7 +17,7 @@ const App = (() => {
   let state = loadState();
   let currentPicks = {};
   let currentPlayer = '';
-  let tiebreakerScore = '';
+
   let selectedPresets = [];
   let firebaseReady = false;
 
@@ -508,16 +508,12 @@ const App = (() => {
     db.ref(`state/players/${name}/${week}`).once('value').then(snapshot => {
       const existing = snapshot.val();
       if (existing && existing.picks && Object.keys(existing.picks).length > 0) {
-        // Already picked — show their locked confirmation
         currentPicks = { ...existing.picks };
-        tiebreakerScore = existing.tiebreaker || '';
         renderConfirmation(weekData);
       } else {
-        // Also check local state as fallback
         const localExisting = state.players[name] && state.players[name][week];
         if (localExisting && localExisting.picks && Object.keys(localExisting.picks).length > 0) {
           currentPicks = { ...localExisting.picks };
-          tiebreakerScore = localExisting.tiebreaker || '';
           renderConfirmation(weekData);
         } else {
           if (!state.players[name]) state.players[name] = {};
@@ -525,11 +521,9 @@ const App = (() => {
         }
       }
     }).catch(() => {
-      // Firebase offline — use local state
       const localExisting = state.players[name] && state.players[name][week];
       if (localExisting && localExisting.picks && Object.keys(localExisting.picks).length > 0) {
         currentPicks = { ...localExisting.picks };
-        tiebreakerScore = localExisting.tiebreaker || '';
         renderConfirmation(weekData);
       } else {
         if (!state.players[name]) state.players[name] = {};
@@ -561,12 +555,7 @@ const App = (() => {
           <button class="team-btn" data-matchup="${i}" data-team="a" onclick="App.pickTeam(${i},'a',${m.isSuper})">${teamBadge(m.a)}</button>
           <span class="vs-text">VS</span>
           <button class="team-btn" data-matchup="${i}" data-team="b" onclick="App.pickTeam(${i},'b',${m.isSuper})">${teamBadge(m.b)}</button>
-        </div>
-        ${m.isSuper ? `
-        <div class="tiebreaker">
-          <label>Tiebreaker: Total combined score</label><br>
-          <input type="number" id="tiebreaker" placeholder="e.g. 47" min="0" max="200" onchange="App.setTiebreaker(this.value)">
-        </div>` : ''}`;
+        </div>`;
       container.appendChild(card);
     });
 
@@ -582,7 +571,7 @@ const App = (() => {
     checkAllPicked();
   }
 
-  function setTiebreaker(val) { tiebreakerScore = val; }
+
 
   function checkAllPicked() {
     const data = parseURL() || state.weeks[Object.keys(state.weeks).sort((a, b) => b - a)[0]];
@@ -596,8 +585,7 @@ const App = (() => {
 
     if (!state.players[currentPlayer]) state.players[currentPlayer] = {};
     state.players[currentPlayer][week] = {
-      picks: { ...currentPicks },
-      tiebreaker: tiebreakerScore
+      picks: { ...currentPicks }
     };
     save();
 
@@ -618,13 +606,6 @@ const App = (() => {
       div.textContent = `${m.isSuper ? 'SUPER: ' : ''}${teamName}`;
       container.appendChild(div);
     });
-
-    if (tiebreakerScore) {
-      const tb = document.createElement('div');
-      tb.className = 'confirm-pick';
-      tb.textContent = `Tiebreaker: ${tiebreakerScore} pts`;
-      container.appendChild(tb);
-    }
 
     renderPickCounter(data);
     showScreen('screen-confirm');
@@ -1013,9 +994,6 @@ const App = (() => {
           html += `<span class="all-pick-chip${m.isSuper ? ' chip-super' : ''}">${teamName}</span>`;
         });
         html += '</div>';
-        if (pw.tiebreaker) {
-          html += `<div class="all-pick-tb">Tiebreaker: ${pw.tiebreaker}</div>`;
-        }
         html += '</div>';
       });
     }
@@ -1158,7 +1136,6 @@ const App = (() => {
       player: currentPlayer,
       week: week,
       picks: { ...currentPicks },
-      tiebreaker: tiebreakerScore,
       matchups: data.matchups.map((m, i) => ({
         a: m.a, b: m.b, isSuper: m.isSuper,
         picked: currentPicks[i] === 'a' ? m.a : m.b
@@ -1192,8 +1169,7 @@ const App = (() => {
           if ((d._type === 'marjito-madness-pick' || d._type === 'gridiron-pick') && d.player && d.week && d.picks) {
             if (!state.players[d.player]) state.players[d.player] = {};
             state.players[d.player][d.week] = {
-              picks: d.picks,
-              tiebreaker: d.tiebreaker || ''
+              picks: d.picks
             };
             imported++;
           } else {
@@ -1251,7 +1227,7 @@ const App = (() => {
 
   return {
     showScreen, enterPlayer, generateLink, copyLink, commishMakePicks,
-    pickTeam, setTiebreaker, submitPicks,
+    pickTeam, submitPicks,
     loadResultsWeek, addPlayerForWeek, saveResults,
     togglePreset, exportData, downloadMyPicks,
     triggerImport, handleImport, importFullData, handleFullImport,
