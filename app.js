@@ -973,53 +973,102 @@ const App = (() => {
   }
 
   // --- Leaderboard ---
+  let _lbWeekView = 0; // 0 = season totals, 1-17 = specific week
+
   function renderLeaderboard() {
-    const scores = {};
-    Object.keys(state.players).forEach(p => { scores[p] = 0; });
-
-    Object.keys(state.results).forEach(week => {
-      const weekResults = state.results[week];
-      const weekData = state.weeks[week];
-      if (!weekData) return;
-
-      Object.keys(state.players).forEach(p => {
-        const pWeek = state.players[p] && state.players[p][week];
-        if (!pWeek || !pWeek.picks) return;
-
-        weekData.matchups.forEach((m, i) => {
-          const winner = weekResults[i];
-          const pick = pWeek.picks[i];
-          if (winner && pick === winner) {
-            scores[p] += m.isSuper ? 3 : 1;
-          }
-        });
-      });
-    });
-
-    // Determine latest active week to flag missing picks
-    const activeWeeks = Object.keys(state.weeks).sort((a, b) => b - a);
-    const latestWeek = activeWeeks.length > 0 ? activeWeeks[0] : null;
-
-    const sorted = Object.entries(scores).sort((a, b) => b[1] - a[1]);
+    const { totals, byWeek, weeks, players } = calcScores();
+    const currentWeek = getCurrentNFLWeek();
     const container = document.getElementById('leaderboard-table');
 
-    if (sorted.length === 0) {
+    if (players.length === 0) {
       container.innerHTML = '<p style="color:var(--text-dim);text-align:center">No players yet</p>';
       return;
     }
 
-    let html = '<table class="lb-table"><thead><tr><th></th><th>Player</th><th>Pts</th></tr></thead><tbody>';
-    sorted.forEach(([name, pts], i) => {
-      const medal = i === 0 ? '&#127942;' : i === 1 ? '&#129352;' : i === 2 ? '&#129353;' : '';
-      const pWeek = latestWeek && state.players[name] && state.players[name][latestWeek];
-      const hasPicks = pWeek && pWeek.picks && Object.keys(pWeek.picks).length > 0;
-      const badge = latestWeek && !hasPicks
-        ? ' <span style="font-size:0.6rem;color:var(--danger);background:rgba(255,68,102,0.15);padding:1px 5px;border-radius:3px;vertical-align:middle">No picks W' + latestWeek + '</span>'
-        : '';
-      html += `<tr><td class="lb-rank">${medal || i + 1}</td><td>${esc(name)}${badge}</td><td>${pts}</td></tr>`;
-    });
-    html += '</tbody></table>';
+    // Week selector tabs
+    let html = '<div class="lb-week-tabs">';
+    html += `<button class="lb-tab${_lbWeekView === 0 ? ' active' : ''}" onclick="App.setLBWeek(0)">Season</button>`;
+    for (let w = 1; w <= 17; w++) {
+      const status = getWeekStatus(w);
+      const cls = status === 'future' ? ' future' : '';
+      const isCurrent = w === currentWeek ? ' current' : '';
+      html += `<button class="lb-tab${_lbWeekView === w ? ' active' : ''}${cls}${isCurrent}" onclick="App.setLBWeek(${w})">W${w}</button>`;
+    }
+    html += '</div>';
+
+    if (_lbWeekView === 0) {
+      // Season totals view
+      const sorted = Object.entries(totals).sort((a, b) => b[1] - a[1]);
+      html += '<table class="lb-table"><thead><tr><th></th><th>Player</th><th>Pts</th></tr></thead><tbody>';
+      sorted.forEach(([name, pts], i) => {
+        const medal = i === 0 ? '&#127942;' : i === 1 ? '&#129352;' : i === 2 ? '&#129353;' : '';
+        html += `<tr><td class="lb-rank">${medal || i + 1}</td><td>${esc(name)}</td><td>${pts}</td></tr>`;
+      });
+      html += '</tbody></table>';
+    } else {
+      // Per-week view
+      const w = _lbWeekView;
+      const wd = state.weeks[w];
+      const wr = state.results[w] || {};
+      const status = getWeekStatus(w);
+      const hasResults = Object.keys(wr).length > 0;
+
+      // Show matchups for context
+      if (wd && wd.matchups) {
+        html += '<div class="lb-week-matchups">';
+        wd.matchups.forEach((m) => {
+          const winnerKey = wr[wd.matchups.indexOf(m)];
+          html += `<div class="lb-matchup-row${m.isSuper ? ' lb-matchup-super' : ''}">`;
+          const mIdx = wd.matchups.indexOf(m);
+          const winner = wr[mIdx];
+          const aWin = winner === 'a' ? ' style="font-weight:700;color:var(--accent)"' : '';
+          const bWin = winner === 'b' ? ' style="font-weight:700;color:var(--accent)"' : '';
+          html += `<span${aWin}>${teamBadge(m.a)}</span><span class="vs-text" style="margin:0 6px">vs</span><span${bWin}>${teamBadge(m.b)}</span>`;
+          if (m.isSuper) html += '<span class="super-badge" style="margin-left:6px">3x</span>';
+          html += `</div>`;
+        });
+        html += '</div>';
+      }
+
+      if (status === 'future') {
+        html += '<p style="color:var(--text-dim);text-align:center;font-size:0.85rem;margin-top:12px">This week hasn\'t started yet</p>';
+      } else {
+        // Player picks for this week
+        const weekScores = [];
+        players.forEach(p => {
+          const pw = state.players[p] && state.players[p][w];
+          const hasPicks = pw && pw.picks && Object.keys(pw.picks).length > 0;
+          const pts = (byWeek[w] || {})[p] || 0;
+          weekScores.push({ name: p, pts, hasPicks, pw });
+        });
+        weekScores.sort((a, b) => b.pts - a.pts);
+
+        html += '<table class="lb-table" style="margin-top:8px"><thead><tr><th></th><th>Player</th><th>Picks</th><th>Pts</th></tr></thead><tbody>';
+        weekScores.forEach(({ name, pts, hasPicks, pw }, i) => {
+          const medal = hasPicks && hasResults ? (i === 0 ? '&#127942;' : i === 1 ? '&#129352;' : i === 2 ? '&#129353;' : '') : '';
+          let picksStr = '<span style="color:var(--text-dim);font-size:0.75rem">—</span>';
+          if (hasPicks && wd) {
+            picksStr = wd.matchups.map((m, mi) => {
+              const pick = (pw.picks || {})[mi];
+              const pickName = pick === 'a' ? m.a : pick === 'b' ? m.b : '?';
+              const winner = wr[mi];
+              if (winner && pick === winner) return `<span class="pick-correct">${pickName}</span>`;
+              if (winner && pick !== winner) return `<span class="pick-wrong">${pickName}</span>`;
+              return `<span class="pick-pending">${pickName}</span>`;
+            }).join(', ');
+          }
+          html += `<tr><td class="lb-rank">${medal || i + 1}</td><td>${esc(name)}</td><td style="font-size:0.75rem">${picksStr}</td><td>${hasPicks ? pts : '—'}</td></tr>`;
+        });
+        html += '</tbody></table>';
+      }
+    }
+
     container.innerHTML = html;
+  }
+
+  function setLBWeek(w) {
+    _lbWeekView = w;
+    renderLeaderboard();
   }
 
   // --- Scoring helper ---
@@ -1436,59 +1485,9 @@ const App = (() => {
     });
     const pct = total > 0 ? Math.round((correct / total) * 100) : 0;
 
-    // Find the active NFL week (time-based)
     const currentWeek = getCurrentNFLWeek();
 
     let html = '';
-
-    // --- Current week highlight ---
-    if (currentWeek) {
-      const cwd = state.weeks[currentWeek];
-      const cpw = playerData[currentWeek];
-      const hasPicks = cpw && cpw.picks && Object.keys(cpw.picks).length > 0;
-      const cwr = state.results[currentWeek] || {};
-      const deadline = getWeekDeadline(currentWeek);
-      const now = new Date();
-      const isLocked = now >= deadline && !hasPicks; // Past deadline with no picks = missed
-      const deadlineStr = deadline.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
-
-      html += `<div class="current-week-card">`;
-      html += `<div class="cw-header"><span class="cw-label">WEEK ${currentWeek}</span>`;
-      if (hasPicks) {
-        html += `<span class="badge-done">LOCKED IN</span>`;
-      } else if (isLocked) {
-        html += `<span style="font-size:0.65rem;font-weight:700;padding:2px 8px;border-radius:6px;background:rgba(255,68,102,0.15);color:var(--danger)">MISSED</span>`;
-      } else {
-        html += `<span class="badge-pending">NEEDS PICKS</span>`;
-      }
-      html += `</div>`;
-      if (!hasPicks && !isLocked) {
-        html += `<p style="font-size:0.7rem;color:var(--text-dim);text-align:center;margin-bottom:6px">Picks lock ${deadlineStr} at kickoff</p>`;
-      }
-
-      if (hasPicks && cwd) {
-        cwd.matchups.forEach((m, i) => {
-          const pick = cpw.picks[i];
-          const pickedName = pick === 'a' ? m.a : pick === 'b' ? m.b : '—';
-          const winner = cwr[i];
-          let cls = 'pick-pending';
-          let icon = '⏳';
-          if (winner) {
-            if (pick === winner) { cls = 'pick-correct'; icon = '✓'; }
-            else { cls = 'pick-wrong'; icon = '✗'; }
-          }
-          const superTag = m.isSuper ? ' <span class="super-badge">SUPER</span>' : '';
-          html += `<div class="cw-pick"><span class="${cls}">${icon} ${teamBadge(pickedName)}</span>`;
-          html += `<span class="cw-matchup">${m.a} vs ${m.b}${superTag}</span></div>`;
-        });
-      } else if (isLocked) {
-        html += `<p class="cw-prompt" style="color:var(--danger)">Picks window closed for this week.</p>`;
-      } else {
-        html += `<p class="cw-prompt">Picks not in yet — tap below to make your picks.</p>`;
-        html += `<button class="btn primary" style="margin-top:8px" onclick="App.enterPlayer()">Make Picks</button>`;
-      }
-      html += `</div>`;
-    }
 
     // --- Summary stats ---
     html += `<div style="display:flex;gap:12px;margin-bottom:16px">`;
@@ -1497,40 +1496,121 @@ const App = (() => {
     html += `<div class="stat-box"><div class="stat-num">${pct}%</div><div class="stat-label">Accuracy</div></div>`;
     html += `</div>`;
 
-    // --- Week-by-week breakdown (past weeks) ---
-    const pastWeeks = weeks.filter(w => String(w) !== String(currentWeek));
-    if (pastWeeks.length > 0 || (currentWeek && playerData[currentWeek])) {
-      html += '<div class="divider-text">week by week</div>';
-    }
-    weeks.forEach(week => {
-      const wd = state.weeks[week];
-      const wr = state.results[week] || {};
-      const pw = playerData[week];
-      if (!wd || !pw || !pw.picks) return;
+    // --- Full Season Browser: all 17 weeks ---
+    html += '<div class="divider-text">full season</div>';
 
-      // Skip current week in the history list — already shown above
-      if (String(week) === String(currentWeek)) return;
+    for (let w = 1; w <= 17; w++) {
+      const wd = state.weeks[w] || (SCHEDULE[w] ? { week: w, matchups: [
+        { a: SCHEDULE[w].tnf.a, b: SCHEDULE[w].tnf.b, isSuper: false },
+        { a: SCHEDULE[w].snf.a, b: SCHEDULE[w].snf.b, isSuper: false },
+        { a: SCHEDULE[w].mnf.a, b: SCHEDULE[w].mnf.b, isSuper: true }
+      ]} : null);
+      if (!wd || !wd.matchups) continue;
 
-      const wPts = (byWeek[week] || {})[name] || 0;
-      html += `<div class="collapsible-week" onclick="this.classList.toggle('open')">`;
-      html += `<div class="cw-row"><span style="font-weight:700;font-size:0.85rem">Week ${week}</span><span class="pointed">${wPts} pts</span><span class="cw-chevron">▸</span></div>`;
-      html += `<div class="cw-body">`;
+      const wr = state.results[w] || {};
+      const pw = playerData[w];
+      const hasPicks = pw && pw.picks && Object.keys(pw.picks).length > 0;
+      const status = getWeekStatus(w);
+      const wPts = (byWeek[w] || {})[name] || 0;
+      const deadline = getWeekDeadline(w);
+      const now = new Date();
 
-      wd.matchups.forEach((m, i) => {
-        const pick = pw.picks[i];
-        const pickName = pick === 'a' ? m.a : pick === 'b' ? m.b : '?';
-        const winner = wr[i];
-        let cls = 'pick-pending';
-        let icon = '⏳';
-        if (winner) {
-          if (pick === winner) { cls = 'pick-correct'; icon = '✓'; }
-          else { cls = 'pick-wrong'; icon = '✗'; }
+      if (status === 'active') {
+        // --- Current week: prominent card (not collapsible) ---
+        const isLocked = now >= deadline && !hasPicks;
+        const deadlineStr = deadline.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
+
+        html += `<div class="current-week-card">`;
+        html += `<div class="cw-header"><span class="cw-label">WEEK ${w}</span>`;
+        if (hasPicks) {
+          html += `<span class="badge-done">LOCKED IN</span>`;
+        } else if (isLocked) {
+          html += `<span class="badge-missed">MISSED</span>`;
+        } else {
+          html += `<span class="badge-pending">NEEDS PICKS</span>`;
         }
-        html += `<div style="font-size:0.8rem;padding:2px 0"><span class="${cls}">${icon} ${pickName}</span>`;
-        html += `<span style="color:var(--text-dim)"> — ${m.a} vs ${m.b}${m.isSuper ? ' ⭐' : ''}</span></div>`;
-      });
-      html += `</div></div>`;
-    });
+        html += `</div>`;
+        if (!hasPicks && !isLocked) {
+          html += `<p style="font-size:0.7rem;color:var(--text-dim);text-align:center;margin-bottom:6px">Picks lock ${deadlineStr} at kickoff</p>`;
+        }
+
+        if (hasPicks) {
+          wd.matchups.forEach((m, i) => {
+            const pick = pw.picks[i];
+            const pickedName = pick === 'a' ? m.a : pick === 'b' ? m.b : '—';
+            const winner = wr[i];
+            let cls = 'pick-pending', icon = '⏳';
+            if (winner) {
+              if (pick === winner) { cls = 'pick-correct'; icon = '✓'; }
+              else { cls = 'pick-wrong'; icon = '✗'; }
+            }
+            const superTag = m.isSuper ? ' <span class="super-badge">SUPER</span>' : '';
+            html += `<div class="cw-pick"><span class="${cls}">${icon} ${teamBadge(pickedName)}</span>`;
+            html += `<span class="cw-matchup">${m.a} vs ${m.b}${superTag}</span></div>`;
+          });
+        } else if (isLocked) {
+          html += `<p class="cw-prompt" style="color:var(--danger)">Picks window closed for this week.</p>`;
+        } else {
+          html += `<p class="cw-prompt">Picks not in yet — tap below to make your picks.</p>`;
+          html += `<button class="btn primary" style="margin-top:8px" onclick="App.enterPlayer()">Make Picks</button>`;
+        }
+        html += `</div>`;
+
+      } else if (status === 'past') {
+        // --- Past week: collapsible, shows picks + results ---
+        const hasResults = Object.keys(wr).length > 0;
+
+        html += `<div class="collapsible-week week-past" onclick="this.classList.toggle('open')">`;
+        html += `<div class="cw-row">`;
+        html += `<span style="font-weight:700;font-size:0.85rem">Week ${w}</span>`;
+        if (hasPicks) {
+          html += `<span class="pointed">${wPts} pts</span>`;
+        } else {
+          html += `<span class="badge-missed-sm">MISSED</span>`;
+        }
+        html += `<span class="cw-chevron">▸</span></div>`;
+        html += `<div class="cw-body">`;
+
+        if (hasPicks) {
+          wd.matchups.forEach((m, i) => {
+            const pick = pw.picks[i];
+            const pickName = pick === 'a' ? m.a : pick === 'b' ? m.b : '?';
+            const winner = wr[i];
+            let cls = 'pick-pending', icon = '⏳';
+            if (winner) {
+              if (pick === winner) { cls = 'pick-correct'; icon = '✓'; }
+              else { cls = 'pick-wrong'; icon = '✗'; }
+            }
+            html += `<div style="font-size:0.8rem;padding:2px 0"><span class="${cls}">${icon} ${teamBadge(pickName)}</span>`;
+            html += `<span style="color:var(--text-dim)"> — ${m.a} vs ${m.b}${m.isSuper ? ' ⭐' : ''}</span></div>`;
+          });
+        } else {
+          html += `<div style="font-size:0.8rem;color:var(--text-dim);padding:4px 0">No picks submitted</div>`;
+          wd.matchups.forEach((m, i) => {
+            const winner = wr[i];
+            const winName = winner === 'a' ? m.a : winner === 'b' ? m.b : null;
+            html += `<div style="font-size:0.8rem;padding:2px 0;color:var(--text-dim)">${m.a} vs ${m.b}${m.isSuper ? ' ⭐' : ''}`;
+            if (winName) html += ` — <span class="pick-correct">W: ${winName}</span>`;
+            html += `</div>`;
+          });
+        }
+        html += `</div></div>`;
+
+      } else {
+        // --- Future week: collapsible, grayed out, shows matchups preview ---
+        html += `<div class="collapsible-week week-future" onclick="this.classList.toggle('open')">`;
+        html += `<div class="cw-row">`;
+        html += `<span style="font-weight:700;font-size:0.85rem;opacity:0.5">Week ${w}</span>`;
+        html += `<span class="badge-future">UPCOMING</span>`;
+        html += `<span class="cw-chevron">▸</span></div>`;
+        html += `<div class="cw-body">`;
+        wd.matchups.forEach((m) => {
+          const primeLabel = m.isSuper ? '<span class="super-badge" style="font-size:0.55rem;margin-right:4px">MNF</span>' : '';
+          html += `<div style="font-size:0.8rem;padding:2px 0;opacity:0.45">${primeLabel}${teamBadge(m.a)} vs ${teamBadge(m.b)}</div>`;
+        });
+        html += `</div></div>`;
+      }
+    }
 
     // vs the field
     if (sorted.length > 1) {
@@ -1660,6 +1740,7 @@ const App = (() => {
     exportData, downloadMyPicks,
     triggerImport, handleImport, importFullData, handleFullImport,
     showAllPicks, renderAllPicks, resetWeekSetup, onCommWeekChange,
-    editWeekSetup, nextWeek, resetPlayerPicks, resetWeekPicks, removePlayer, browseWeek, resetAllData, refreshSchedule
+    editWeekSetup, nextWeek, resetPlayerPicks, resetWeekPicks, removePlayer, browseWeek, resetAllData, refreshSchedule,
+    setLBWeek
   };
 })();
