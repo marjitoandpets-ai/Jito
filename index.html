@@ -2,16 +2,15 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
-  <meta http-equiv="Pragma" content="no-cache">
-  <meta http-equiv="Expires" content="0">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
   <title>Marjito's Maniacal Matchup Mayhem Madness</title>
-  <link rel="stylesheet" href="./style.css?v=44">
+  <link rel="preconnect" href="https://www.gstatic.com" crossorigin>
+  <link rel="preconnect" href="https://marjitosmatchupmadness-default-rtdb.firebaseio.com" crossorigin>
+  <link rel="stylesheet" href="./style.css?v=45">
   <script>
     // Force-refresh on version mismatch (defeats GitHub Pages caching)
     (function() {
-      var APP_VERSION = '44';
+      var APP_VERSION = '45';
       var stored = localStorage.getItem('marjitos_app_version');
       if (stored && stored !== APP_VERSION) {
         localStorage.setItem('marjitos_app_version', APP_VERSION);
@@ -212,6 +211,6 @@
 
   <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-database-compat.js"></script>
-  <script src="./app.js?v=44"></script>
+  <script src="./app.js?v=45"></script>
 </body>
 </html>
