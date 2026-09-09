@@ -17,9 +17,17 @@ const App = (() => {
   let state = loadState();
   let currentPicks = {};
   let currentPlayer = '';
+  const ADMIN_NAME = 'Marjito';
 
   let selectedPresets = [];
   let firebaseReady = false;
+
+  // HTML-escape player names to prevent XSS
+  function esc(str) {
+    const d = document.createElement('div');
+    d.textContent = str;
+    return d.innerHTML;
+  }
 
   // NFL team code <-> display name mapping
   const TEAMS = {
@@ -108,8 +116,31 @@ const App = (() => {
 
   function save() {
     saveLocal();
-    // Push to Firebase
-    db.ref('state').set(state).catch(err => console.warn('Firebase write failed:', err));
+    // Push entire state to Firebase — use update to merge, not overwrite
+    db.ref('state').update({
+      players: state.players,
+      weeks: state.weeks,
+      results: state.results
+    }).catch(err => console.warn('Firebase write failed:', err));
+  }
+
+  // Granular save: write only a specific path to avoid overwriting others' data
+  function savePlayerWeek(playerName, week, data) {
+    saveLocal();
+    db.ref(`state/players/${playerName}/${week}`).set(data)
+      .catch(err => console.warn('Firebase write failed:', err));
+  }
+
+  function saveWeek(week, data) {
+    saveLocal();
+    db.ref(`state/weeks/${week}`).set(data)
+      .catch(err => console.warn('Firebase write failed:', err));
+  }
+
+  function savePlayerEntry(playerName) {
+    saveLocal();
+    db.ref(`state/players/${playerName}`).set(state.players[playerName] || {})
+      .catch(err => console.warn('Firebase write failed:', err));
   }
 
   // --- Firebase Real-time Listener ---
@@ -152,10 +183,53 @@ const App = (() => {
   }
 
   // --- Screen Navigation ---
+  function isAdmin() {
+    if (!currentPlayer) return false;
+    return currentPlayer.trim().toLowerCase() === ADMIN_NAME.toLowerCase();
+  }
+
+  function updateCommishButtons() {
+    document.querySelectorAll('.commish-btn').forEach(btn => {
+      btn.style.display = isAdmin() ? '' : 'none';
+    });
+  }
+
+  function updateLoggedInBar() {
+    const bar = document.getElementById('logged-in-bar');
+    if (!bar) return;
+    if (currentPlayer) {
+      bar.style.display = '';
+      let html = '<span class="logged-in-name">' + esc(currentPlayer) + '</span>';
+      if (isAdmin()) {
+        html += '<a href="#" class="admin-badge" onclick="App.showScreen(\'screen-commissioner\');return false">★ COMMISSIONER</a>';
+      }
+      bar.innerHTML = html;
+    } else {
+      bar.style.display = 'none';
+      bar.innerHTML = '';
+    }
+  }
+
+  const ADMIN_SCREENS = ['screen-results', 'screen-commissioner', 'screen-dashboard', 'screen-all-picks'];
+
+  function goHome() {
+    if (currentPlayer) {
+      showScreen('screen-my-stats');
+    } else {
+      showScreen('screen-landing');
+    }
+  }
+
   function showScreen(id) {
+    // Gate commissioner-only screens
+    if (ADMIN_SCREENS.includes(id) && !isAdmin()) {
+      id = 'screen-landing';
+    }
     sessionStorage.setItem('marjitos_last_screen', id);
     document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
     document.getElementById(id).classList.add('active');
+    updateCommishButtons();
+    updateLoggedInBar();
     if (id === 'screen-landing') updateLandingInfo();
     if (id === 'screen-commissioner') {
       // Auto-set week from URL or latest saved week (unless override active from nextWeek)
@@ -234,13 +308,15 @@ const App = (() => {
       currentPlayer = savedName;
       const nameInput = document.getElementById('player-name');
       if (nameInput) nameInput.value = savedName;
+      updateLoggedInBar();
+      updateCommishButtons();
     }
 
     initFirebase();
     const data = parseURL();
-    if (data && data.matchups) {
+    if (data && data.matchups && !state.weeks[data.week]) {
       state.weeks[data.week] = data;
-      save();
+      saveWeek(data.week, data);
     }
 
     // Auto-login: if we have a saved name and a last screen that isn't landing,
@@ -250,7 +326,11 @@ const App = (() => {
     } else if (savedName && !lastScreen) {
       // Saved name but no last screen — auto-enter as that player
       // Wait briefly for Firebase to sync so we have week data
-      setTimeout(() => { if (Object.keys(state.weeks).length > 0) enterPlayer(); }, 500);
+      // Only auto-enter if still on landing (user may have navigated away)
+      setTimeout(() => {
+        const active = document.querySelector('.screen.active');
+        if (active && active.id === 'screen-landing' && Object.keys(state.weeks).length > 0) enterPlayer();
+      }, 500);
     } else if (data && data.matchups) {
       showScreen(lastScreen || 'screen-landing');
     } else if (lastScreen) {
@@ -318,6 +398,7 @@ const App = (() => {
       });
       html += `<div style="display:flex;gap:8px;margin-top:12px">`;
       html += `<button class="btn ghost" style="flex:1" onclick="App.editWeekSetup()">Unlock & Edit</button>`;
+      html += `<button class="btn ghost" style="flex:1;color:var(--danger)" onclick="App.resetWeekPicks()">Reset All Picks</button>`;
       html += `</div>`;
       container.innerHTML = html;
 
@@ -426,7 +507,8 @@ const App = (() => {
     // Unlock the current week for re-editing
     const week = parseInt(document.getElementById('comm-week').value) || 1;
     delete state.weeks[week];
-    save();
+    saveLocal();
+    db.ref(`state/weeks/${week}`).remove().catch(err => console.warn('Firebase delete failed:', err));
     document.getElementById('share-link-box').classList.add('hidden');
     renderMatchupPicker();
   }
@@ -468,10 +550,6 @@ const App = (() => {
     setTimeout(() => { _commWeekOverride = null; }, 3000);
   }
 
-  function togglePreset(idx) {
-    // No longer needed — primetime matchups auto-populate
-  }
-
   function generateLink() {
     const week = parseInt(document.getElementById('comm-week').value) || 1;
     let matchups = [];
@@ -488,7 +566,7 @@ const App = (() => {
 
     const data = { week, matchups };
     state.weeks[week] = data;
-    save();
+    saveWeek(week, data);
 
     const hash = encodeHash(data);
     window.location.hash = hash;
@@ -507,7 +585,10 @@ const App = (() => {
   }
 
   function commishMakePicks() {
-    showScreen('screen-landing');
+    currentPlayer = ADMIN_NAME;
+    localStorage.setItem('marjitos_player_name', ADMIN_NAME);
+    document.getElementById('player-name').value = ADMIN_NAME;
+    enterPlayer();
   }
 
   // --- Player Voting ---
@@ -520,11 +601,22 @@ const App = (() => {
     if (heading) heading.textContent = 'Enter Your Name';
     const switchLink = document.getElementById('switch-player-link');
     if (switchLink) switchLink.classList.add('hidden');
+    updateLoggedInBar();
   }
+
+  const MAX_PLAYERS = 12;
 
   function enterPlayer() {
     const name = document.getElementById('player-name').value.trim();
     if (!name) { alert('Enter your name'); return; }
+
+    // Check player cap — only for NEW players (existing ones can always log back in)
+    const existingPlayers = Object.keys(state.players);
+    if (!state.players[name] && existingPlayers.length >= MAX_PLAYERS) {
+      alert(`League is full — max ${MAX_PLAYERS} players allowed. Contact Marjito to join.`);
+      return;
+    }
+
     currentPlayer = name;
     localStorage.setItem('marjitos_player_name', name);
 
@@ -552,7 +644,7 @@ const App = (() => {
           currentPicks = { ...localExisting.picks };
           renderConfirmation(weekData);
         } else {
-          if (!state.players[name]) state.players[name] = {};
+          if (!state.players[name]) { state.players[name] = {}; savePlayerEntry(name); }
           loadVotingScreen(weekData);
         }
       }
@@ -562,7 +654,7 @@ const App = (() => {
         currentPicks = { ...localExisting.picks };
         renderConfirmation(weekData);
       } else {
-        if (!state.players[name]) state.players[name] = {};
+        if (!state.players[name]) { state.players[name] = {}; savePlayerEntry(name); }
         loadVotingScreen(weekData);
       }
     });
@@ -620,10 +712,9 @@ const App = (() => {
     const week = data.week;
 
     if (!state.players[currentPlayer]) state.players[currentPlayer] = {};
-    state.players[currentPlayer][week] = {
-      picks: { ...currentPicks }
-    };
-    save();
+    const pickData = { picks: { ...currentPicks } };
+    state.players[currentPlayer][week] = pickData;
+    savePlayerWeek(currentPlayer, week, pickData);
 
     renderConfirmation(data);
   }
@@ -661,7 +752,9 @@ const App = (() => {
     data.matchups.forEach((m, i) => {
       let aCount = 0, bCount = 0;
       pickedPlayers.forEach(p => {
-        const pick = (state.players[p][week].picks || {})[i];
+        const pw = state.players[p][week];
+        if (!pw || !pw.picks) return;
+        const pick = pw.picks[i];
         if (pick === 'a') aCount++;
         else if (pick === 'b') bCount++;
       });
@@ -703,12 +796,13 @@ const App = (() => {
 
     if (!data) { mContainer.innerHTML = '<p style="color:var(--text-dim)">No matchups for this week</p>'; return; }
 
+    // --- Winner entry section ---
     data.matchups.forEach((m, i) => {
       const existing = (state.results[week] || {})[i];
       const row = document.createElement('div');
       row.className = 'result-row';
       row.innerHTML = `
-        <span>${m.isSuper ? 'SUPER: ' : ''}${m.a} vs ${m.b}</span>
+        <span>${m.isSuper ? '<span class="super-badge">SUPER</span> ' : ''}${teamBadge(m.a)} vs ${teamBadge(m.b)}</span>
         <select id="result-${i}">
           <option value="">Winner?</option>
           <option value="a" ${existing === 'a' ? 'selected' : ''}>${m.a}</option>
@@ -717,45 +811,69 @@ const App = (() => {
       mContainer.appendChild(row);
     });
 
+    // --- Player picks display ---
     const players = Object.keys(state.players);
     if (players.length === 0) {
-      pContainer.innerHTML = '<p style="color:var(--text-dim)">No players yet</p>';
+      pContainer.innerHTML = '<p style="color:var(--text-dim);text-align:center">No players yet</p>';
       return;
     }
-    pContainer.innerHTML = `
-      <div style="margin-bottom:8px">
-        <label>Add Player</label>
-        <div class="setup-row">
-          <input type="text" id="new-player-name" placeholder="Name">
-          <button class="btn secondary" style="width:auto;padding:8px 16px" onclick="App.addPlayerForWeek()">Add</button>
-        </div>
-      </div>`;
 
     players.forEach(p => {
       const pData = (state.players[p] && state.players[p][week]) || {};
-      const div = document.createElement('div');
-      div.style.cssText = 'margin-bottom:8px;padding:8px;border-radius:8px;background:rgba(255,255,255,0.03)';
-      let picksHtml = `<strong>${p}</strong><br>`;
+      const hasPicks = pData.picks && Object.keys(pData.picks).length > 0;
+      const card = document.createElement('div');
+      card.className = 'rp-card';
+
+      let picksHtml = '';
       data.matchups.forEach((m, i) => {
         const pick = (pData.picks || {})[i];
-        const label = m.isSuper ? 'Super' : `M${i + 1}`;
-        picksHtml += `
-          <select id="ppick-${p}-${i}" style="margin:2px;padding:4px;background:rgba(255,255,255,0.06);border:1px solid var(--card-border);color:var(--text);border-radius:6px;font-size:0.8rem">
-            <option value="">${label}?</option>
-            <option value="a" ${pick === 'a' ? 'selected' : ''}>${m.a}</option>
-            <option value="b" ${pick === 'b' ? 'selected' : ''}>${m.b}</option>
-          </select>`;
+        const pickedName = pick === 'a' ? m.a : pick === 'b' ? m.b : null;
+        if (pickedName) {
+          const cls = m.isSuper ? 'rp-chip chip-super' : 'rp-chip';
+          picksHtml += `<span class="${cls}">${teamBadge(pickedName)}</span>`;
+        } else {
+          picksHtml += `<span class="rp-chip chip-empty">—</span>`;
+        }
       });
-      div.innerHTML = picksHtml;
-      pContainer.appendChild(div);
+
+      card.innerHTML = `
+        <div class="rp-header">
+          <span class="rp-name">${esc(p)}</span>
+          <button class="btn ghost rp-reset${hasPicks ? '' : ' rp-disabled'}" onclick="App.resetPlayerPicksFromResults('${esc(p.replace(/'/g, "\\'"))}', ${week})"${hasPicks ? '' : ' disabled'}>Reset</button>
+        </div>
+        <div class="rp-picks">${picksHtml}</div>`;
+      pContainer.appendChild(card);
     });
+  }
+
+  function browseResultsWeek(dir) {
+    const el = document.getElementById('results-week');
+    let w = parseInt(el.value) || 1;
+    w = Math.max(1, Math.min(18, w + dir));
+    el.value = w;
+    loadResultsWeek();
+  }
+
+  function resetPlayerPicksFromResults(playerName, week) {
+    if (!confirm(`Reset ${playerName}'s picks for Week ${week}? They'll be able to vote again.`)) return;
+    if (state.players[playerName] && state.players[playerName][week]) {
+      delete state.players[playerName][week];
+      savePlayerEntry(playerName);
+      loadResultsWeek();
+    }
   }
 
   function addPlayerForWeek() {
     const name = document.getElementById('new-player-name').value.trim();
     if (!name) return;
-    if (!state.players[name]) state.players[name] = {};
-    save();
+    if (!state.players[name]) {
+      if (Object.keys(state.players).length >= MAX_PLAYERS) {
+        alert(`League is full — max ${MAX_PLAYERS} players. Remove someone first.`);
+        return;
+      }
+      state.players[name] = {};
+      savePlayerEntry(name);
+    }
     document.getElementById('new-player-name').value = '';
     loadResultsWeek();
   }
@@ -771,18 +889,9 @@ const App = (() => {
       if (val) state.results[week][i] = val;
     });
 
-    Object.keys(state.players).forEach(p => {
-      data.matchups.forEach((m, i) => {
-        const el = document.getElementById(`ppick-${p}-${i}`);
-        if (el && el.value) {
-          if (!state.players[p][week]) state.players[p][week] = { picks: {} };
-          state.players[p][week].picks[i] = el.value;
-        }
-      });
-    });
-
     save();
-    alert('Results saved');
+    alert('Winners saved');
+    renderLeaderboard();
   }
 
   // --- Leaderboard ---
@@ -809,6 +918,10 @@ const App = (() => {
       });
     });
 
+    // Determine latest active week to flag missing picks
+    const activeWeeks = Object.keys(state.weeks).sort((a, b) => b - a);
+    const latestWeek = activeWeeks.length > 0 ? activeWeeks[0] : null;
+
     const sorted = Object.entries(scores).sort((a, b) => b[1] - a[1]);
     const container = document.getElementById('leaderboard-table');
 
@@ -820,7 +933,12 @@ const App = (() => {
     let html = '<table class="lb-table"><thead><tr><th></th><th>Player</th><th>Pts</th></tr></thead><tbody>';
     sorted.forEach(([name, pts], i) => {
       const medal = i === 0 ? '&#127942;' : i === 1 ? '&#129352;' : i === 2 ? '&#129353;' : '';
-      html += `<tr><td class="lb-rank">${medal || i + 1}</td><td>${name}</td><td>${pts}</td></tr>`;
+      const pWeek = latestWeek && state.players[name] && state.players[name][latestWeek];
+      const hasPicks = pWeek && pWeek.picks && Object.keys(pWeek.picks).length > 0;
+      const badge = latestWeek && !hasPicks
+        ? ' <span style="font-size:0.6rem;color:var(--danger);background:rgba(255,68,102,0.15);padding:1px 5px;border-radius:3px;vertical-align:middle">No picks W' + latestWeek + '</span>'
+        : '';
+      html += `<tr><td class="lb-rank">${medal || i + 1}</td><td>${esc(name)}${badge}</td><td>${pts}</td></tr>`;
     });
     html += '</tbody></table>';
     container.innerHTML = html;
@@ -871,7 +989,7 @@ const App = (() => {
       h += '<th>Total</th></tr></thead><tbody>';
       sorted.forEach(([name, total], i) => {
         const medal = i === 0 ? '&#127942;' : i === 1 ? '&#129352;' : i === 2 ? '&#129353;' : '';
-        h += `<tr><td class="lb-rank">${medal || i + 1}</td><td>${name}</td>`;
+        h += `<tr><td class="lb-rank">${medal || i + 1}</td><td>${esc(name)}</td>`;
         weeks.forEach(w => {
           const wp = (byWeek[w] || {})[name] || 0;
           const cls = wp > 0 ? ' class="pointed"' : '';
@@ -902,6 +1020,7 @@ const App = (() => {
         ? '<span class="badge-done">Results In</span>'
         : '<span class="badge-pending">Pending</span>';
       hHtml += `<button class="btn ghost" style="padding:4px 8px;font-size:0.75rem;width:auto;margin:0" onclick="document.getElementById('results-week').value=${week};App.showScreen('screen-results')">Edit</button>`;
+      hHtml += `<button class="btn ghost" style="padding:4px 8px;font-size:0.65rem;width:auto;margin:0;color:var(--danger)" onclick="App.resetWeekPicks(${week})">Reset Picks</button>`;
       hHtml += `</div>`;
 
       wd.matchups.forEach((m, i) => {
@@ -933,11 +1052,47 @@ const App = (() => {
           return `<span class="pick-pending">${name}</span>`;
         }).join(', ');
         const wPts = (byWeek[week] || {})[p] || 0;
-        hHtml += `<div class="history-player-row"><span>${p}</span><span class="history-player-picks">${pickNames}</span><span class="history-player-pts">${wPts} pts</span></div>`;
+        hHtml += `<div class="history-player-row"><span>${esc(p)}</span><span class="history-player-picks">${pickNames}</span><span class="history-player-pts">${wPts} pts</span></div>`;
       });
       hHtml += '</div></div>';
     });
     historyEl.innerHTML = hHtml;
+
+    // Manage Players section
+    const playersEl = document.getElementById('dash-players');
+    const allPlayers = Object.keys(state.players).sort();
+    const activeWeeks = Object.keys(state.weeks).sort((a, b) => a - b);
+    if (allPlayers.length === 0) {
+      playersEl.innerHTML = '<p style="color:var(--text-dim)">No players yet</p>';
+    } else {
+      let pH = '';
+      allPlayers.forEach(p => {
+        const escapedName = p.replace(/'/g, "\\'");
+        pH += `<div style="border:1px solid var(--card-border);border-radius:8px;padding:8px 10px;margin-bottom:6px">`;
+        pH += `<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px">`;
+        pH += `<strong style="font-size:0.85rem">${esc(p)}</strong>`;
+        pH += `<button class="btn ghost" style="width:auto;padding:2px 8px;font-size:0.65rem;margin:0;color:var(--danger)" onclick="App.removePlayer('${escapedName}')">Remove</button>`;
+        pH += `</div>`;
+        // Show each week's pick status with reset button
+        if (activeWeeks.length > 0) {
+          pH += '<div style="display:flex;flex-wrap:wrap;gap:4px">';
+          activeWeeks.forEach(w => {
+            const pWeek = state.players[p] && state.players[p][w];
+            const hasPicks = pWeek && pWeek.picks && Object.keys(pWeek.picks).length > 0;
+            if (hasPicks) {
+              pH += `<span style="display:inline-flex;align-items:center;gap:3px;font-size:0.65rem;background:rgba(0,200,150,0.12);color:var(--accent);padding:2px 6px;border-radius:4px">`;
+              pH += `W${w} ✓ <a href="#" onclick="App.resetPlayerPicks('${escapedName}',${w});return false" style="color:var(--danger);text-decoration:none;font-weight:700" title="Reset Week ${w}">✕</a>`;
+              pH += `</span>`;
+            } else {
+              pH += `<span style="font-size:0.65rem;color:var(--text-dim);padding:2px 6px">W${w} —</span>`;
+            }
+          });
+          pH += '</div>';
+        }
+        pH += '</div>';
+      });
+      playersEl.innerHTML = pH;
+    }
   }
 
   // --- Live Picks Feed (commissioner screen) ---
@@ -974,7 +1129,7 @@ const App = (() => {
       } else {
         pickSummary = Object.values(pw.picks || {}).join(', ');
       }
-      html += `<div class="live-pick-row"><span class="live-pick-name">${p}</span><span class="live-pick-teams">${pickSummary}</span></div>`;
+      html += `<div class="live-pick-row"><span class="live-pick-name">${esc(p)}</span><span class="live-pick-teams">${pickSummary}</span></div>`;
     });
 
     listEl.innerHTML = html;
@@ -1020,7 +1175,7 @@ const App = (() => {
         const pw = state.players[p][week];
         html += '<div class="all-pick-card">';
         html += `<div style="display:flex;justify-content:space-between;align-items:center">`;
-        html += `<div class="all-pick-name">${p}</div>`;
+        html += `<div class="all-pick-name">${esc(p)}</div>`;
         html += `<button class="btn ghost" style="width:auto;padding:2px 8px;font-size:0.7rem;margin:0;color:var(--danger)" onclick="App.resetPlayerPicks('${p.replace(/'/g, "\\'")}',${week})">Reset</button>`;
         html += `</div>`;
         html += '<div class="all-pick-choices">';
@@ -1053,9 +1208,107 @@ const App = (() => {
     if (!confirm(`Reset ${playerName}'s picks for Week ${week}? They'll be able to vote again.`)) return;
     if (state.players[playerName] && state.players[playerName][week]) {
       delete state.players[playerName][week];
-      save();
-      renderAllPicks();
+      savePlayerEntry(playerName);
+      const active = document.querySelector('.screen.active');
+      if (active && active.id === 'screen-results') loadResultsWeek();
+      else if (active && active.id === 'screen-dashboard') renderDashboard();
+      else renderAllPicks();
     }
+  }
+
+  function resetWeekPicks(week) {
+    if (!week) week = parseInt(document.getElementById('comm-week').value) || 1;
+    const players = Object.keys(state.players);
+    const withPicks = players.filter(p => state.players[p][week] && state.players[p][week].picks);
+    if (withPicks.length === 0) { alert(`No picks to reset for Week ${week}.`); return; }
+    if (!confirm(`Reset ALL ${withPicks.length} player picks for Week ${week}? Everyone will need to re-vote.`)) return;
+    const updates = {};
+    withPicks.forEach(p => {
+      delete state.players[p][week];
+      updates[`state/players/${p}/${week}`] = null;
+    });
+    saveLocal();
+    db.ref().update(updates).catch(err => console.warn('Firebase batch delete failed:', err));
+    alert(`Week ${week}: ${withPicks.length} player picks cleared.`);
+    const active = document.querySelector('.screen.active');
+    if (active && active.id === 'screen-dashboard') renderDashboard();
+    else if (active && active.id === 'screen-all-picks') renderAllPicks();
+    else initCommissioner();
+  }
+
+  function removePlayer(playerName) {
+    if (!confirm(`Remove ${playerName} entirely? All their picks across every week will be deleted.`)) return;
+    if (state.players[playerName]) {
+      delete state.players[playerName];
+      saveLocal();
+      db.ref(`state/players/${playerName}`).remove()
+        .catch(err => console.warn('Firebase delete failed:', err));
+      renderDashboard();
+    }
+  }
+
+  // --- Schedule Refresh ---
+  // Try ESPN API for live schedule; fall back to hardcoded SCHEDULE
+  function refreshSchedule() {
+    const week = parseInt(document.getElementById('comm-week').value) || 1;
+    // Don't overwrite a confirmed week unless user says so
+    if (state.weeks[week] && state.weeks[week].matchups) {
+      if (!confirm(`Week ${week} is already confirmed. Re-apply schedule data and unlock it?`)) return;
+      delete state.weeks[week];
+      saveLocal();
+      db.ref(`state/weeks/${week}`).remove().catch(() => {});
+    }
+
+    const statusEl = document.getElementById('schedule-status');
+    if (statusEl) { statusEl.textContent = 'Fetching schedule...'; statusEl.style.display = ''; }
+
+    // Try ESPN undocumented API (2026 regular season)
+    const espnUrl = `https://site.api.espn.com/apis/site/v2/sports/football/nfl/scoreboard?seasontype=2&week=${week}&dates=2026`;
+    fetch(espnUrl)
+      .then(r => { if (!r.ok) throw new Error('ESPN returned ' + r.status); return r.json(); })
+      .then(data => {
+        const games = (data.events || []);
+        // Identify primetime games by their broadcast slot
+        let tnf = null, snf = null, mnf = null;
+        games.forEach(g => {
+          const name = (g.name || '').toLowerCase();
+          const shortName = g.shortName || '';
+          const teams = (g.competitions && g.competitions[0] && g.competitions[0].competitors) || [];
+          const dayOfWeek = new Date(g.date).getDay(); // 0=Sun, 1=Mon, 4=Thu
+          const broadcast = ((g.competitions && g.competitions[0] && g.competitions[0].broadcast) || '').toLowerCase();
+
+          if (teams.length < 2) return;
+          const away = teams.find(t => t.homeAway === 'away');
+          const home = teams.find(t => t.homeAway === 'home');
+          if (!away || !home) return;
+          const aName = TEAMS[away.team.abbreviation] || away.team.displayName;
+          const bName = TEAMS[home.team.abbreviation] || home.team.displayName;
+
+          if (dayOfWeek === 4 && !tnf) tnf = { a: aName, b: bName };
+          else if (dayOfWeek === 0 && !snf) {
+            // SNF is the late Sunday game — check time or just take last Sunday game
+            if (!snf) snf = { a: aName, b: bName }; // will be overwritten by later Sunday games
+          }
+          else if (dayOfWeek === 1 && !mnf) mnf = { a: aName, b: bName };
+        });
+
+        // If we got all 3 primetime slots from ESPN, use them
+        if (tnf && snf && mnf) {
+          SCHEDULE[week] = { tnf, snf, mnf };
+          if (statusEl) { statusEl.textContent = `Week ${week} updated from ESPN`; statusEl.style.color = 'var(--accent)'; }
+        } else {
+          // Partial data — fall back to hardcoded
+          if (statusEl) { statusEl.textContent = `ESPN partial — using stored schedule`; statusEl.style.color = 'var(--super)'; }
+        }
+        renderMatchupPicker();
+        document.getElementById('confirm-week-btn').classList.remove('hidden');
+      })
+      .catch(() => {
+        // ESPN failed (CORS, down, etc.) — use hardcoded SCHEDULE
+        if (statusEl) { statusEl.textContent = `Using stored schedule (ESPN unavailable)`; statusEl.style.color = 'var(--text-dim)'; }
+        renderMatchupPicker();
+        document.getElementById('confirm-week-btn').classList.remove('hidden');
+      });
   }
 
   function resetAllData() {
@@ -1081,8 +1334,7 @@ const App = (() => {
 
     document.getElementById('my-stats-name').textContent = `${name}'s Record`;
     const container = document.getElementById('my-stats-content');
-    const playerData = state.players[name];
-    if (!playerData) { container.innerHTML = '<p style="color:var(--text-dim)">No picks recorded yet</p>'; return; }
+    const playerData = state.players[name] || {};
 
     const { totals, byWeek, weeks, players } = calcScores();
     const myTotal = totals[name] || 0;
@@ -1104,21 +1356,70 @@ const App = (() => {
     });
     const pct = total > 0 ? Math.round((correct / total) * 100) : 0;
 
+    // Find the latest (current) week
+    const allWeeks = Object.keys(state.weeks).sort((a, b) => Number(b) - Number(a));
+    const currentWeek = allWeeks.length > 0 ? allWeeks[0] : null;
+
     let html = '';
-    // Summary card
+
+    // --- Current week highlight ---
+    if (currentWeek) {
+      const cwd = state.weeks[currentWeek];
+      const cpw = playerData[currentWeek];
+      const hasPicks = cpw && cpw.picks && Object.keys(cpw.picks).length > 0;
+      const cwr = state.results[currentWeek] || {};
+
+      html += `<div class="current-week-card">`;
+      html += `<div class="cw-header"><span class="cw-label">WEEK ${currentWeek}</span>`;
+      if (hasPicks) {
+        html += `<span class="badge-done">LOCKED IN</span>`;
+      } else {
+        html += `<span class="badge-pending">NEEDS PICKS</span>`;
+      }
+      html += `</div>`;
+
+      if (hasPicks && cwd) {
+        cwd.matchups.forEach((m, i) => {
+          const pick = cpw.picks[i];
+          const pickedName = pick === 'a' ? m.a : pick === 'b' ? m.b : '—';
+          const winner = cwr[i];
+          let cls = 'pick-pending';
+          let icon = '⏳';
+          if (winner) {
+            if (pick === winner) { cls = 'pick-correct'; icon = '✓'; }
+            else { cls = 'pick-wrong'; icon = '✗'; }
+          }
+          const superTag = m.isSuper ? ' <span class="super-badge">SUPER</span>' : '';
+          html += `<div class="cw-pick"><span class="${cls}">${icon} ${teamBadge(pickedName)}</span>`;
+          html += `<span class="cw-matchup">${m.a} vs ${m.b}${superTag}</span></div>`;
+        });
+      } else {
+        html += `<p class="cw-prompt">Picks not in yet — tap below to make your picks.</p>`;
+        html += `<button class="btn primary" style="margin-top:8px" onclick="App.showScreen('screen-vote')">Make Picks</button>`;
+      }
+      html += `</div>`;
+    }
+
+    // --- Summary stats ---
     html += `<div style="display:flex;gap:12px;margin-bottom:16px">`;
     html += `<div class="stat-box"><div class="stat-num">${myTotal}</div><div class="stat-label">Points</div></div>`;
     html += `<div class="stat-box"><div class="stat-num">#${rank || '—'}</div><div class="stat-label">Rank</div></div>`;
     html += `<div class="stat-box"><div class="stat-num">${pct}%</div><div class="stat-label">Accuracy</div></div>`;
     html += `</div>`;
 
-    // Week-by-week breakdown
-    html += '<div class="divider-text">week by week</div>';
+    // --- Week-by-week breakdown (past weeks) ---
+    const pastWeeks = weeks.filter(w => String(w) !== String(currentWeek));
+    if (pastWeeks.length > 0 || (currentWeek && playerData[currentWeek])) {
+      html += '<div class="divider-text">week by week</div>';
+    }
     weeks.forEach(week => {
       const wd = state.weeks[week];
       const wr = state.results[week] || {};
       const pw = playerData[week];
       if (!wd || !pw || !pw.picks) return;
+
+      // Skip current week in the history list — already shown above
+      if (String(week) === String(currentWeek)) return;
 
       const wPts = (byWeek[week] || {})[name] || 0;
       html += `<div style="margin-bottom:8px;padding:8px;border-radius:8px;background:rgba(255,255,255,0.03)">`;
@@ -1146,7 +1447,7 @@ const App = (() => {
       sorted.slice(0, 5).forEach(([n, pts], i) => {
         const isMe = n === name;
         html += `<div style="display:flex;justify-content:space-between;padding:4px 8px;font-size:0.85rem;${isMe ? 'font-weight:700;color:var(--accent)' : ''}">`;
-        html += `<span>${i + 1}. ${n}${isMe ? ' (you)' : ''}</span><span>${pts} pts</span></div>`;
+        html += `<span>${i + 1}. ${esc(n)}${isMe ? ' (you)' : ''}</span><span>${pts} pts</span></div>`;
       });
     }
 
@@ -1262,12 +1563,12 @@ const App = (() => {
   init();
 
   return {
-    showScreen, enterPlayer, switchPlayer, generateLink, copyLink, commishMakePicks,
+    goHome, showScreen, enterPlayer, switchPlayer, generateLink, copyLink, commishMakePicks,
     pickTeam, submitPicks,
-    loadResultsWeek, addPlayerForWeek, saveResults,
-    togglePreset, exportData, downloadMyPicks,
+    loadResultsWeek, addPlayerForWeek, saveResults, browseResultsWeek, resetPlayerPicksFromResults,
+    exportData, downloadMyPicks,
     triggerImport, handleImport, importFullData, handleFullImport,
     showAllPicks, renderAllPicks, resetWeekSetup, onCommWeekChange,
-    editWeekSetup, nextWeek, resetPlayerPicks, browseWeek, resetAllData
+    editWeekSetup, nextWeek, resetPlayerPicks, resetWeekPicks, removePlayer, browseWeek, resetAllData, refreshSchedule
   };
 })();

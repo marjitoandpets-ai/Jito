@@ -7,14 +7,34 @@
   <meta http-equiv="Pragma" content="no-cache">
   <meta http-equiv="Expires" content="0">
   <title>Marjito's Maniacal Matchup Mayhem Madness</title>
-  <link rel="stylesheet" href="./style.css">
+  <link rel="stylesheet" href="./style.css?v=39">
+  <script>
+    // Force-refresh on version mismatch (defeats GitHub Pages caching)
+    (function() {
+      var APP_VERSION = '39';
+      var stored = localStorage.getItem('marjitos_app_version');
+      if (stored && stored !== APP_VERSION) {
+        localStorage.setItem('marjitos_app_version', APP_VERSION);
+        location.reload(true);
+        return;
+      }
+      localStorage.setItem('marjitos_app_version', APP_VERSION);
+      // Unregister any stale service workers
+      if ('serviceWorker' in navigator) {
+        navigator.serviceWorker.getRegistrations().then(function(regs) {
+          regs.forEach(function(r) { r.unregister(); });
+        });
+      }
+    })();
+  </script>
 </head>
 <body>
   <div id="app">
     <header>
       <h1>MARJITO'S MANIACAL MATCHUP MAYHEM MADNESS</h1>
       <p class="tagline">Make Your Moves. Madness Decides.</p>
-      <button onclick="location.reload(true)" style="position:absolute;top:12px;right:12px;background:none;border:1px solid rgba(255,255,255,0.2);color:var(--text-dim);font-size:0.65rem;padding:4px 8px;border-radius:4px;cursor:pointer;">&#x21bb; Refresh</button>
+      <div id="logged-in-bar" style="display:none"></div>
+      <button onclick="App.goHome()" style="position:absolute;top:8px;right:8px;background:none;border:1px solid rgba(255,255,255,0.2);color:var(--text-dim);font-size:0.85rem;padding:8px 12px;border-radius:6px;cursor:pointer;min-width:44px;min-height:44px;touch-action:manipulation">⌂</button>
     </header>
 
     <!-- Landing / Player Name -->
@@ -27,8 +47,6 @@
         <div id="switch-player-link" class="hidden" style="text-align:center;margin-top:8px">
           <a href="#" onclick="App.switchPlayer();return false" style="color:var(--text-dim);font-size:0.75rem;text-decoration:underline">Not you? Switch player</a>
         </div>
-        <div class="divider-text">or</div>
-        <button class="btn ghost" onclick="App.showScreen('screen-commissioner')">Commissioner Mode</button>
       </div>
     </div>
 
@@ -47,6 +65,8 @@
 
         <div class="matchup-setup" id="matchup-setups"></div>
         <button class="btn primary" id="confirm-week-btn" onclick="App.generateLink()">Confirm Week</button>
+        <button class="btn ghost" style="font-size:0.75rem;margin-top:0" onclick="App.refreshSchedule()">↻ Refresh Schedule from NFL</button>
+        <div id="schedule-status" style="display:none;text-align:center;font-size:0.7rem;margin:4px 0 8px"></div>
         <div id="share-link-box" class="hidden">
           <p class="label">Share this link with your league:</p>
           <input type="text" id="share-link" readonly>
@@ -94,6 +114,7 @@
       <button class="btn secondary" onclick="App.showScreen('screen-my-stats')">My Stats & Record</button>
       <button class="btn secondary" onclick="App.showScreen('screen-leaderboard')">Leaderboard</button>
       <button class="btn ghost" onclick="App.downloadMyPicks()">Download My Picks</button>
+      <button class="btn ghost commish-btn" onclick="App.showScreen('screen-commissioner')">Commissioner Mode</button>
     </div>
 
     <!-- Player Stats Screen -->
@@ -102,6 +123,7 @@
         <h2 id="my-stats-name">My Record</h2>
         <div id="my-stats-content"></div>
         <button class="btn secondary" onclick="App.showScreen('screen-leaderboard')">Full Leaderboard</button>
+        <button class="btn ghost commish-btn" onclick="App.showScreen('screen-commissioner')">Commissioner Mode</button>
         <button class="btn ghost" onclick="App.showScreen('screen-confirm')">Back</button>
       </div>
     </div>
@@ -110,12 +132,18 @@
     <div id="screen-results" class="screen">
       <div class="card glass">
         <h2>Enter Results</h2>
-        <label>Week</label>
-        <input type="number" id="results-week" min="1" max="18" value="1" onchange="App.loadResultsWeek()">
+        <div class="week-nav">
+          <button class="btn ghost week-nav-btn" onclick="App.browseResultsWeek(-1)">◀</button>
+          <div class="week-nav-label">
+            <label>Week</label>
+            <input type="number" id="results-week" min="1" max="18" value="1" onchange="App.loadResultsWeek()">
+          </div>
+          <button class="btn ghost week-nav-btn" onclick="App.browseResultsWeek(1)">▶</button>
+        </div>
         <div id="results-matchups"></div>
-        <h3>Record Player Picks</h3>
+        <button class="btn primary" onclick="App.saveResults()">Save Winners</button>
+        <div class="divider-text">player picks</div>
         <div id="player-pick-entry"></div>
-        <button class="btn primary" onclick="App.saveResults()">Save Results</button>
         <button class="btn ghost" onclick="App.showScreen('screen-leaderboard')">View Leaderboard</button>
         <button class="btn ghost" onclick="App.showScreen('screen-commissioner')">Back</button>
       </div>
@@ -136,6 +164,12 @@
         <div class="dash-section">
           <h3>Week-by-Week History</h3>
           <div id="dash-history"></div>
+        </div>
+
+        <!-- Manage Players -->
+        <div class="dash-section">
+          <h3>Manage Players</h3>
+          <div id="dash-players"></div>
         </div>
 
         <div class="divider-text">actions</div>
@@ -159,6 +193,7 @@
       <div class="card glass">
         <h2>Leaderboard</h2>
         <div id="leaderboard-table"></div>
+        <button class="btn ghost commish-btn" onclick="App.showScreen('screen-commissioner')">Commissioner Mode</button>
         <button class="btn ghost" onclick="App.showScreen('screen-landing')">Back</button>
       </div>
     </div>
@@ -177,6 +212,6 @@
 
   <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-database-compat.js"></script>
-  <script src="./app.js?v=23"></script>
+  <script src="./app.js?v=39"></script>
 </body>
 </html>
