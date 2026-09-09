@@ -90,6 +90,14 @@ header { position: relative; }
 #logged-in-bar .admin-badge:active {
   opacity: 0.8;
 }
+#logged-in-bar .version-tag {
+  font-size: 0.55rem;
+  color: var(--text-dim);
+  opacity: 0.5;
+  vertical-align: middle;
+  margin-left: 4px;
+  letter-spacing: 0.03em;
+}
 
 .team-badge {
   display: inline-flex;

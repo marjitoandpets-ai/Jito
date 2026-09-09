@@ -6,11 +6,11 @@
   <title>Marjito's Maniacal Matchup Mayhem Madness</title>
   <link rel="preconnect" href="https://www.gstatic.com" crossorigin>
   <link rel="preconnect" href="https://marjitosmatchupmadness-default-rtdb.firebaseio.com" crossorigin>
-  <link rel="stylesheet" href="./style.css?v=51">
+  <link rel="stylesheet" href="./style.css?v=52">
   <script>
     // Force-refresh on version mismatch (defeats GitHub Pages caching)
     (function() {
-      var APP_VERSION = '51';
+      var APP_VERSION = '52';
       var stored = localStorage.getItem('marjitos_app_version');
       if (stored && stored !== APP_VERSION) {
         localStorage.setItem('marjitos_app_version', APP_VERSION);
@@ -46,6 +46,7 @@
         <div id="switch-player-link" class="hidden" style="text-align:center;margin-top:8px">
           <a href="#" onclick="App.switchPlayer();return false" style="color:var(--text-dim);font-size:0.75rem;text-decoration:underline">Not you? Switch player</a>
         </div>
+        <div id="landing-debug" style="text-align:center;margin-top:12px;font-size:0.55rem;color:var(--text-dim);opacity:0.5"></div>
       </div>
     </div>
 
@@ -217,6 +218,6 @@
   <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-auth-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-database-compat.js"></script>
-  <script src="./app.js?v=51"></script>
+  <script src="./app.js?v=52"></script>
 </body>
 </html>

@@ -323,6 +323,8 @@ const App = (() => {
     });
   }
 
+  const APP_VERSION = '52';
+
   function updateLoggedInBar() {
     const bar = document.getElementById('logged-in-bar');
     if (!bar) return;
@@ -332,6 +334,7 @@ const App = (() => {
       if (isAdmin()) {
         html += '<a href="#" class="admin-badge" onclick="App.showScreen(\'screen-commissioner\');return false">★ COMMISSIONER</a>';
       }
+      html += '<span class="version-tag">v' + APP_VERSION + '</span>';
       bar.innerHTML = html;
     } else {
       bar.style.display = 'none';
@@ -504,6 +507,13 @@ const App = (() => {
       el.innerHTML = html;
     } else {
       el.innerHTML = '';
+    }
+    // Debug info at bottom of landing
+    const dbg = document.getElementById('landing-debug');
+    if (dbg) {
+      const pc = Object.keys(state.players).length;
+      const conn = firebaseReady ? 'FB ready' : 'FB loading';
+      dbg.textContent = 'v' + APP_VERSION + ' | ' + conn + ' | ' + pc + ' player' + (pc !== 1 ? 's' : '') + ' synced';
     }
   }
 
