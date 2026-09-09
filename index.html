@@ -7,11 +7,11 @@
   <meta http-equiv="Pragma" content="no-cache">
   <meta http-equiv="Expires" content="0">
   <title>Marjito's Maniacal Matchup Mayhem Madness</title>
-  <link rel="stylesheet" href="./style.css?v=43">
+  <link rel="stylesheet" href="./style.css?v=44">
   <script>
     // Force-refresh on version mismatch (defeats GitHub Pages caching)
     (function() {
-      var APP_VERSION = '43';
+      var APP_VERSION = '44';
       var stored = localStorage.getItem('marjitos_app_version');
       if (stored && stored !== APP_VERSION) {
         localStorage.setItem('marjitos_app_version', APP_VERSION);
@@ -34,7 +34,7 @@
       <h1>MARJITO'S MANIACAL MATCHUP MAYHEM MADNESS</h1>
       <p class="tagline">Make Your Moves. Madness Decides.</p>
       <div id="logged-in-bar" style="display:none"></div>
-      <button onclick="App.goHome()" style="position:absolute;top:8px;right:8px;background:none;border:1px solid rgba(255,255,255,0.2);color:var(--text-dim);font-size:0.85rem;padding:8px 12px;border-radius:6px;cursor:pointer;min-width:44px;min-height:44px;touch-action:manipulation">⌂</button>
+      <button class="home-btn" onclick="App.goHome()">⌂</button>
     </header>
 
     <!-- Landing / Player Name -->
@@ -212,6 +212,6 @@
 
   <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-database-compat.js"></script>
-  <script src="./app.js?v=43"></script>
+  <script src="./app.js?v=44"></script>
 </body>
 </html>

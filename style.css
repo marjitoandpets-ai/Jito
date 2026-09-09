@@ -41,6 +41,21 @@ html { height: -webkit-fill-available; }
 }
 header { position: relative; }
 
+.home-btn {
+  position: absolute; top: 8px; right: 8px;
+  background: none; border: 1px solid rgba(255,255,255,0.2);
+  color: var(--text-dim); font-size: 1rem;
+  padding: 10px 14px; border-radius: 8px;
+  min-width: 48px; min-height: 48px;
+  touch-action: manipulation;
+  -webkit-user-select: none; user-select: none;
+  transition: background 0.15s, border-color 0.15s;
+}
+.home-btn:active {
+  background: rgba(255,255,255,0.08);
+  border-color: var(--accent);
+}
+
 #logged-in-bar {
   display: flex;
   align-items: center;
@@ -56,18 +71,21 @@ header { position: relative; }
   letter-spacing: 0.03em;
 }
 #logged-in-bar .admin-badge {
-  display: inline-block;
+  display: inline-flex;
+  align-items: center;
   background: var(--super);
   color: #0a0f1a;
   font-size: 0.6rem;
   font-weight: 700;
-  padding: 2px 8px;
+  padding: 6px 12px;
   border-radius: 4px;
   vertical-align: middle;
   letter-spacing: 0.04em;
   text-decoration: none;
   touch-action: manipulation;
   cursor: pointer;
+  min-height: 36px;
+  -webkit-user-select: none; user-select: none;
 }
 #logged-in-bar .admin-badge:active {
   opacity: 0.8;
@@ -164,7 +182,7 @@ label { display: block; font-size: 0.8rem; color: var(--text-dim); margin-bottom
 
 .btn {
   display: inline-block; width: 100%; padding: 14px; border-radius: 12px; border: none;
-  font-size: 1rem; font-weight: 600; cursor: pointer; transition: all 0.2s; text-align: center;
+  font-size: 1rem; font-weight: 600; cursor: pointer; transition: all 0.15s; text-align: center;
   margin-bottom: 8px; touch-action: manipulation;
   -webkit-user-select: none; user-select: none;
 }
@@ -179,6 +197,18 @@ label { display: block; font-size: 0.8rem; color: var(--text-dim); margin-bottom
 .divider-text {
   text-align: center; color: var(--text-dim); font-size: 0.75rem; margin: 12px 0;
   text-transform: uppercase; letter-spacing: 2px;
+}
+
+/* Global touch rules — prevent double-tap zoom and 300ms delay on all interactive elements */
+button, a, select, input, .collapsible-week, .lb-tab, .rp-reset, .admin-badge, [onclick] {
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+}
+
+/* Minimum tap target for all buttons and links */
+button, .btn, .lb-tab, .rp-reset, .admin-badge {
+  min-height: 44px;
+  cursor: pointer;
 }
 
 .week-badge {
@@ -458,6 +488,8 @@ label { display: block; font-size: 0.8rem; color: var(--text-dim); margin-bottom
   background: rgba(255,255,255,0.03); cursor: pointer;
   -webkit-user-select: none; user-select: none;
   touch-action: manipulation;
+  transition: background 0.15s ease;
+  min-height: 44px;
 }
 .cw-row {
   display: flex; align-items: center; justify-content: space-between; gap: 8px;
@@ -510,6 +542,14 @@ label { display: block; font-size: 0.8rem; color: var(--text-dim); margin-bottom
   .team-btn:active { border-color: var(--accent); background: rgba(0,200,150,0.05); }
   .btn.ghost:hover { color: var(--text-dim); }
   .btn.ghost:active { color: var(--text); }
+  .btn.secondary:hover { background: transparent; }
+  .btn.secondary:active { background: rgba(0,200,150,0.08); }
+  .collapsible-week:active { background: rgba(255,255,255,0.06); }
+  .lb-tab:hover { background: rgba(255,255,255,0.03); }
+  .lb-tab:active { background: rgba(255,255,255,0.1); transform: scale(0.95); }
+  .rp-reset:hover { background: rgba(255,68,102,0.08); }
+  .rp-reset:active { background: rgba(255,68,102,0.3); }
+  .current-week-card .btn:active { box-shadow: 0 0 12px var(--accent-glow); }
 }
 
 /* Very small screens (iPhone SE / 320px) */
@@ -532,11 +572,13 @@ label { display: block; font-size: 0.8rem; color: var(--text-dim); margin-bottom
   justify-content: center;
 }
 .lb-tab {
-  padding: 5px 8px; border-radius: 6px; border: 1px solid var(--card-border);
+  padding: 6px 8px; border-radius: 6px; border: 1px solid var(--card-border);
   background: rgba(255,255,255,0.03); color: var(--text-dim);
   font-size: 0.6rem; font-weight: 600; cursor: pointer;
-  touch-action: manipulation; min-width: 32px; text-align: center;
-  transition: all 0.15s;
+  touch-action: manipulation; min-width: 32px; min-height: 32px;
+  text-align: center; transition: all 0.15s;
+  -webkit-user-select: none; user-select: none;
+  display: inline-flex; align-items: center; justify-content: center;
 }
 .lb-tab.active {
   background: var(--accent); color: #000; border-color: var(--accent);
