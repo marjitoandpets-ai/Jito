@@ -105,6 +105,34 @@ const App = (() => {
   };
 
   // --- State Management ---
+  // Convert SCHEDULE to week data format used by the app
+  function ensureAllWeeksLoaded() {
+    let changed = false;
+    Object.keys(SCHEDULE).forEach(w => {
+      const week = parseInt(w);
+      if (state.weeks[week]) return; // already confirmed, don't overwrite
+      const s = SCHEDULE[week];
+      if (!s) return;
+      state.weeks[week] = {
+        week: week,
+        matchups: [
+          { a: s.tnf.a, b: s.tnf.b, isSuper: false },
+          { a: s.snf.a, b: s.snf.b, isSuper: false },
+          { a: s.mnf.a, b: s.mnf.b, isSuper: true }
+        ]
+      };
+      changed = true;
+    });
+    if (changed) {
+      saveLocal();
+      // Save all new weeks to Firebase
+      Object.keys(SCHEDULE).forEach(w => {
+        const week = parseInt(w);
+        if (state.weeks[week]) saveWeek(week, state.weeks[week]);
+      });
+    }
+  }
+
   function loadState() {
     try { return JSON.parse(localStorage.getItem(STORAGE_KEY)) || defaultState(); }
     catch { return defaultState(); }
@@ -153,6 +181,7 @@ const App = (() => {
           weeks: remote.weeks || {},
           results: remote.results || {}
         };
+        ensureAllWeeksLoaded();
         saveLocal();
         firebaseReady = true;
         // Refresh current screen if dashboard/leaderboard is showing
@@ -313,6 +342,7 @@ const App = (() => {
     }
 
     initFirebase();
+    ensureAllWeeksLoaded();
     const data = parseURL();
     if (data && data.matchups && !state.weeks[data.week]) {
       state.weeks[data.week] = data;
@@ -610,9 +640,10 @@ const App = (() => {
     const name = document.getElementById('player-name').value.trim();
     if (!name) { alert('Enter your name'); return; }
 
-    // Check player cap — only for NEW players (existing ones can always log back in)
+    // Check player cap — only for NEW non-admin players (existing ones + Marjito always allowed)
     const existingPlayers = Object.keys(state.players);
-    if (!state.players[name] && existingPlayers.length >= MAX_PLAYERS) {
+    const isNewAdmin = name.trim().toLowerCase() === ADMIN_NAME.toLowerCase();
+    if (!state.players[name] && !isNewAdmin && existingPlayers.length >= MAX_PLAYERS) {
       alert(`League is full — max ${MAX_PLAYERS} players allowed. Contact Marjito to join.`);
       return;
     }
