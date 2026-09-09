@@ -1044,16 +1044,18 @@ const App = (() => {
       const wr = state.results[week] || {};
       const hasResults = Object.keys(wr).length > 0;
 
-      hHtml += `<div class="history-week">`;
-      hHtml += `<div class="history-week-header">`;
+      hHtml += `<div class="history-week collapsible-week" onclick="this.classList.toggle('open')">`;
+      hHtml += `<div class="history-week-header cw-row">`;
       hHtml += `<span class="history-week-num">Week ${week}</span>`;
       hHtml += hasResults
         ? '<span class="badge-done">Results In</span>'
         : '<span class="badge-pending">Pending</span>';
-      hHtml += `<button class="btn ghost" style="padding:4px 8px;font-size:0.75rem;width:auto;margin:0" onclick="document.getElementById('results-week').value=${week};App.showScreen('screen-results')">Edit</button>`;
-      hHtml += `<button class="btn ghost" style="padding:4px 8px;font-size:0.65rem;width:auto;margin:0;color:var(--danger)" onclick="App.resetWeekPicks(${week})">Reset Picks</button>`;
+      hHtml += `<button class="btn ghost" style="padding:4px 8px;font-size:0.75rem;width:auto;margin:0" onclick="event.stopPropagation();document.getElementById('results-week').value=${week};App.showScreen('screen-results')">Edit</button>`;
+      hHtml += `<button class="btn ghost" style="padding:4px 8px;font-size:0.65rem;width:auto;margin:0;color:var(--danger)" onclick="event.stopPropagation();App.resetWeekPicks(${week})">Reset</button>`;
+      hHtml += `<span class="cw-chevron">▸</span>`;
       hHtml += `</div>`;
 
+      hHtml += `<div class="cw-body">`;
       wd.matchups.forEach((m, i) => {
         const winner = wr[i];
         const winName = winner === 'a' ? m.a : winner === 'b' ? m.b : null;
@@ -1085,7 +1087,7 @@ const App = (() => {
         const wPts = (byWeek[week] || {})[p] || 0;
         hHtml += `<div class="history-player-row"><span>${esc(p)}</span><span class="history-player-picks">${pickNames}</span><span class="history-player-pts">${wPts} pts</span></div>`;
       });
-      hHtml += '</div></div>';
+      hHtml += '</div></div></div>';
     });
     historyEl.innerHTML = hHtml;
 
@@ -1453,8 +1455,9 @@ const App = (() => {
       if (String(week) === String(currentWeek)) return;
 
       const wPts = (byWeek[week] || {})[name] || 0;
-      html += `<div style="margin-bottom:8px;padding:8px;border-radius:8px;background:rgba(255,255,255,0.03)">`;
-      html += `<div style="display:flex;justify-content:space-between;margin-bottom:4px"><span style="font-weight:700;font-size:0.85rem">Week ${week}</span><span class="pointed">${wPts} pts</span></div>`;
+      html += `<div class="collapsible-week" onclick="this.classList.toggle('open')">`;
+      html += `<div class="cw-row"><span style="font-weight:700;font-size:0.85rem">Week ${week}</span><span class="pointed">${wPts} pts</span><span class="cw-chevron">▸</span></div>`;
+      html += `<div class="cw-body">`;
 
       wd.matchups.forEach((m, i) => {
         const pick = pw.picks[i];
@@ -1469,7 +1472,7 @@ const App = (() => {
         html += `<div style="font-size:0.8rem;padding:2px 0"><span class="${cls}">${icon} ${pickName}</span>`;
         html += `<span style="color:var(--text-dim)"> — ${m.a} vs ${m.b}${m.isSuper ? ' ⭐' : ''}</span></div>`;
       });
-      html += `</div>`;
+      html += `</div></div>`;
     });
 
     // vs the field
