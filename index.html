@@ -20,10 +20,13 @@
     <!-- Landing / Player Name -->
     <div id="screen-landing" class="screen active">
       <div class="card glass">
-        <h2>Enter Your Name</h2>
+        <h2 id="landing-heading">Enter Your Name</h2>
         <div id="active-week-info"></div>
         <input type="text" id="player-name" placeholder="Your name" autocomplete="off">
         <button class="btn primary" onclick="App.enterPlayer()">Lock In</button>
+        <div id="switch-player-link" class="hidden" style="text-align:center;margin-top:8px">
+          <a href="#" onclick="App.switchPlayer();return false" style="color:var(--text-dim);font-size:0.75rem;text-decoration:underline">Not you? Switch player</a>
+        </div>
         <div class="divider-text">or</div>
         <button class="btn ghost" onclick="App.showScreen('screen-commissioner')">Commissioner Mode</button>
       </div>
@@ -174,6 +177,6 @@
 
   <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-database-compat.js"></script>
-  <script src="./app.js?v=22"></script>
+  <script src="./app.js?v=23"></script>
 </body>
 </html>

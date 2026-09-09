@@ -241,6 +241,17 @@ const App = (() => {
     if (data && data.matchups) {
       state.weeks[data.week] = data;
       save();
+    }
+
+    // Auto-login: if we have a saved name and a last screen that isn't landing,
+    // go straight back to where they were (skip the name entry)
+    if (savedName && lastScreen && lastScreen !== 'screen-landing') {
+      showScreen(lastScreen);
+    } else if (savedName && !lastScreen) {
+      // Saved name but no last screen — auto-enter as that player
+      // Wait briefly for Firebase to sync so we have week data
+      setTimeout(() => { if (Object.keys(state.weeks).length > 0) enterPlayer(); }, 500);
+    } else if (data && data.matchups) {
       showScreen(lastScreen || 'screen-landing');
     } else if (lastScreen) {
       showScreen(lastScreen);
@@ -249,6 +260,20 @@ const App = (() => {
 
   // --- Landing Info ---
   function updateLandingInfo() {
+    // Show "Welcome back" if a saved name exists
+    const savedName = localStorage.getItem('marjitos_player_name');
+    const heading = document.getElementById('landing-heading');
+    const nameInput = document.getElementById('player-name');
+    const switchLink = document.getElementById('switch-player-link');
+    if (savedName && heading) {
+      heading.textContent = `Welcome back, ${savedName}`;
+      if (nameInput) { nameInput.value = savedName; nameInput.style.display = 'none'; }
+      if (switchLink) switchLink.classList.remove('hidden');
+    } else {
+      if (heading) heading.textContent = 'Enter Your Name';
+      if (nameInput) nameInput.style.display = '';
+      if (switchLink) switchLink.classList.add('hidden');
+    }
     const el = document.getElementById('active-week-info');
     if (!el) return;
     const urlData = parseURL();
@@ -486,6 +511,17 @@ const App = (() => {
   }
 
   // --- Player Voting ---
+  function switchPlayer() {
+    localStorage.removeItem('marjitos_player_name');
+    currentPlayer = '';
+    const nameInput = document.getElementById('player-name');
+    if (nameInput) { nameInput.value = ''; nameInput.style.display = ''; }
+    const heading = document.getElementById('landing-heading');
+    if (heading) heading.textContent = 'Enter Your Name';
+    const switchLink = document.getElementById('switch-player-link');
+    if (switchLink) switchLink.classList.add('hidden');
+  }
+
   function enterPlayer() {
     const name = document.getElementById('player-name').value.trim();
     if (!name) { alert('Enter your name'); return; }
@@ -1226,7 +1262,7 @@ const App = (() => {
   init();
 
   return {
-    showScreen, enterPlayer, generateLink, copyLink, commishMakePicks,
+    showScreen, enterPlayer, switchPlayer, generateLink, copyLink, commishMakePicks,
     pickTeam, submitPicks,
     loadResultsWeek, addPlayerForWeek, saveResults,
     togglePreset, exportData, downloadMyPicks,
