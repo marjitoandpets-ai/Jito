@@ -12,6 +12,14 @@ const firebaseConfig = {
 firebase.initializeApp(firebaseConfig);
 const db = firebase.database();
 
+// Sign in anonymously so Firebase rules with "auth != null" still work.
+// This is a no-op if rules are fully open, but prevents silent write failures
+// when rules require authentication.
+let _authReady = false;
+firebase.auth().signInAnonymously()
+  .then(() => { _authReady = true; console.log('[Auth] Signed in anonymously'); })
+  .catch(err => { console.warn('[Auth] Anonymous sign-in failed:', err.message); _authReady = true; });
+
 const App = (() => {
   const STORAGE_KEY = 'marjitos_madness';
   let state = loadState();
@@ -173,33 +181,39 @@ const App = (() => {
   }
   function saveLocal() { localStorage.setItem(STORAGE_KEY, JSON.stringify(state)); }
 
+  function _firebaseWriteError(label, err) {
+    console.error('[Firebase WRITE FAILED] ' + label + ':', err.message || err);
+    if (err.code === 'PERMISSION_DENIED') {
+      console.error('>>> PERMISSION DENIED — check Firebase Realtime Database Rules');
+    }
+  }
+
   function save() {
     saveLocal();
-    // Push entire state to Firebase — use update to merge, not overwrite
     db.ref('state').update({
       players: state.players,
       weeks: state.weeks,
       results: state.results
-    }).catch(err => console.warn('Firebase write failed:', err));
+    }).catch(err => _firebaseWriteError('save()', err));
   }
 
   // Granular save: write only a specific path to avoid overwriting others' data
   function savePlayerWeek(playerName, week, data) {
     saveLocal();
     db.ref(`state/players/${playerName}/${week}`).set(data)
-      .catch(err => console.warn('Firebase write failed:', err));
+      .catch(err => _firebaseWriteError('savePlayerWeek(' + playerName + ',' + week + ')', err));
   }
 
   function saveWeek(week, data) {
     saveLocal();
     db.ref(`state/weeks/${week}`).set(data)
-      .catch(err => console.warn('Firebase write failed:', err));
+      .catch(err => _firebaseWriteError('saveWeek(' + week + ')', err));
   }
 
   function savePlayerEntry(playerName) {
     saveLocal();
     db.ref(`state/players/${playerName}`).set(state.players[playerName] || {})
-      .catch(err => console.warn('Firebase write failed:', err));
+      .catch(err => _firebaseWriteError('savePlayerEntry(' + playerName + ')', err));
   }
 
   // --- Firebase Real-time Listener ---
