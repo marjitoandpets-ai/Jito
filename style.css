@@ -251,8 +251,13 @@ button, .btn, .lb-tab, .rp-reset, .admin-badge {
   transition: border-color 0.1s ease, background-color 0.1s ease;
 }
 .team-btn:hover { border-color: var(--accent); background: rgba(0,200,150,0.05); }
-.team-btn.selected { border-color: var(--selected-border); background: var(--selected); }
-.team-btn.selected-super { border-color: var(--super); background: rgba(255,215,0,0.1); }
+/* Selected states must beat :hover (iOS sticky hover) — use double class for specificity */
+.team-btn.selected, .team-btn.selected:hover, .team-btn.selected:active {
+  border-color: var(--selected-border); background: var(--selected);
+}
+.team-btn.selected-super, .team-btn.selected-super:hover, .team-btn.selected-super:active {
+  border-color: var(--super); background: rgba(255,215,0,0.1);
+}
 .vs-text { font-size: 0.8rem; font-weight: 800; color: var(--text-dim); }
 
 /* Confirmation Card */
@@ -539,8 +544,8 @@ button, .btn, .lb-tab, .rp-reset, .admin-badge {
 @media (hover: none) and (pointer: coarse) {
   .btn.primary:hover { box-shadow: none; }
   .btn.primary:active { box-shadow: 0 0 20px var(--accent-glow); }
-  .team-btn:hover { border-color: var(--card-border); background: rgba(255,255,255,0.03); }
-  .team-btn:active { border-color: var(--accent); background: rgba(0,200,150,0.1); transition: none; }
+  .team-btn:hover:not(.selected):not(.selected-super) { border-color: var(--card-border); background: rgba(255,255,255,0.03); }
+  .team-btn:active:not(.selected):not(.selected-super) { border-color: var(--accent); background: rgba(0,200,150,0.1); transition: none; }
   .btn.ghost:hover { color: var(--text-dim); }
   .btn.ghost:active { color: var(--text); }
   .btn.secondary:hover { background: transparent; }
