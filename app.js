@@ -735,23 +735,41 @@ const App = (() => {
       card.innerHTML = `
         <div class="matchup-label ${labelClass}">${labelText}</div>
         <div class="matchup-vs">
-          <button class="team-btn" data-matchup="${i}" data-team="a" onclick="App.pickTeam(${i},'a',${m.isSuper})">${teamBadge(m.a)}</button>
+          <button class="team-btn" data-matchup="${i}" data-team="a" data-super="${m.isSuper}">${teamBadge(m.a)}</button>
           <span class="vs-text">VS</span>
-          <button class="team-btn" data-matchup="${i}" data-team="b" onclick="App.pickTeam(${i},'b',${m.isSuper})">${teamBadge(m.b)}</button>
+          <button class="team-btn" data-matchup="${i}" data-team="b" data-super="${m.isSuper}">${teamBadge(m.b)}</button>
         </div>`;
       container.appendChild(card);
     });
+
+    // Single delegated listener instead of per-button onclick
+    container.onclick = function(e) {
+      const btn = e.target.closest('.team-btn');
+      if (!btn) return;
+      pickTeam(
+        parseInt(btn.dataset.matchup),
+        btn.dataset.team,
+        btn.dataset.super === 'true'
+      );
+    };
 
     showScreen('screen-vote');
   }
 
   function pickTeam(matchupIdx, team, isSuper) {
+    // Single querySelectorAll instead of two separate calls
     const btns = document.querySelectorAll(`[data-matchup="${matchupIdx}"]`);
-    btns.forEach(b => b.classList.remove('selected', 'selected-super'));
-    const selectedBtn = document.querySelector(`[data-matchup="${matchupIdx}"][data-team="${team}"]`);
-    selectedBtn.classList.add(isSuper ? 'selected-super' : 'selected');
+    for (let i = 0; i < btns.length; i++) {
+      const b = btns[i];
+      if (b.dataset.team === team) {
+        b.classList.add(isSuper ? 'selected-super' : 'selected');
+      } else {
+        b.classList.remove('selected', 'selected-super');
+      }
+    }
     currentPicks[matchupIdx] = team;
-    checkAllPicked();
+    // Inline check — no sorting, no URL parsing
+    document.getElementById('submit-picks-btn').disabled = Object.keys(currentPicks).length < 3;
   }
 
 

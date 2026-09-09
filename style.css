@@ -245,9 +245,12 @@ button, .btn, .lb-tab, .rp-reset, .admin-badge {
 .team-btn {
   flex: 1; padding: 16px 8px; border-radius: 12px; border: 2px solid var(--card-border);
   background: rgba(255,255,255,0.03); color: var(--text); font-size: 0.95rem; font-weight: 600;
-  cursor: pointer; transition: all 0.2s; text-align: center;
+  cursor: pointer; text-align: center;
   touch-action: manipulation; -webkit-user-select: none; user-select: none;
   min-height: 48px;
+  /* Only animate border + background — 'all' causes GPU thrash on phones */
+  transition: border-color 0.12s ease, background-color 0.12s ease;
+  will-change: border-color, background-color;
 }
 .team-btn:hover { border-color: var(--accent); background: rgba(0,200,150,0.05); }
 .team-btn.selected { border-color: var(--selected-border); background: var(--selected); }
@@ -539,7 +542,7 @@ button, .btn, .lb-tab, .rp-reset, .admin-badge {
   .btn.primary:hover { box-shadow: none; }
   .btn.primary:active { box-shadow: 0 0 20px var(--accent-glow); }
   .team-btn:hover { border-color: var(--card-border); background: rgba(255,255,255,0.03); }
-  .team-btn:active { border-color: var(--accent); background: rgba(0,200,150,0.05); }
+  .team-btn:active { border-color: var(--accent); background: rgba(0,200,150,0.1); transition: none; }
   .btn.ghost:hover { color: var(--text-dim); }
   .btn.ghost:active { color: var(--text); }
   .btn.secondary:hover { background: transparent; }
