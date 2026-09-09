@@ -248,9 +248,7 @@ button, .btn, .lb-tab, .rp-reset, .admin-badge {
   cursor: pointer; text-align: center;
   touch-action: manipulation; -webkit-user-select: none; user-select: none;
   min-height: 48px;
-  /* Only animate border + background — 'all' causes GPU thrash on phones */
-  transition: border-color 0.12s ease, background-color 0.12s ease;
-  will-change: border-color, background-color;
+  transition: border-color 0.1s ease, background-color 0.1s ease;
 }
 .team-btn:hover { border-color: var(--accent); background: rgba(0,200,150,0.05); }
 .team-btn.selected { border-color: var(--selected-border); background: var(--selected); }

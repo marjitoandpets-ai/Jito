@@ -742,8 +742,23 @@ const App = (() => {
       container.appendChild(card);
     });
 
-    // Single delegated listener instead of per-button onclick
-    container.onclick = function(e) {
+    // Use pointerdown for instant response — fires on touch contact, no waiting for lift
+    // Prevents ghost click and scroll-triggered picks
+    let _pickTouchHandled = false;
+    container.addEventListener('pointerdown', function(e) {
+      const btn = e.target.closest('.team-btn');
+      if (!btn) return;
+      e.preventDefault(); // prevent subsequent click + text selection
+      _pickTouchHandled = true;
+      pickTeam(
+        parseInt(btn.dataset.matchup),
+        btn.dataset.team,
+        btn.dataset.super === 'true'
+      );
+    }, { passive: false });
+    // Fallback click for accessibility (keyboard, assistive tech)
+    container.addEventListener('click', function(e) {
+      if (_pickTouchHandled) { _pickTouchHandled = false; return; }
       const btn = e.target.closest('.team-btn');
       if (!btn) return;
       pickTeam(
@@ -751,7 +766,7 @@ const App = (() => {
         btn.dataset.team,
         btn.dataset.super === 'true'
       );
-    };
+    });
 
     showScreen('screen-vote');
   }
