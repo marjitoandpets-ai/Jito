@@ -84,6 +84,39 @@ const App = (() => {
   }
 
   // NFL 2026 Primetime Games Only — TNF (1pt), SNF (1pt), MNF (Super 3x)
+  // Week 1 TNF: Thursday Sept 10, 2026
+  const WEEK1_THURSDAY = new Date('2026-09-10T17:00:00-07:00'); // 5pm PT kickoff
+
+  function getCurrentNFLWeek() {
+    const now = new Date();
+    if (now < WEEK1_THURSDAY) return 1; // Pre-season — Week 1 open for picks
+    // Each week is 7 days; after Thursday kickoff you're in that week (locked), next week opens Tuesday
+    const msPerDay = 86400000;
+    const daysSinceW1 = Math.floor((now - WEEK1_THURSDAY) / msPerDay);
+    const currentWeek = Math.floor(daysSinceW1 / 7) + 1;
+    // After Thursday kickoff, that week is locked; picks open for next week starting Tuesday
+    const dayOfWeek = daysSinceW1 % 7; // 0=Thu, 1=Fri, 2=Sat, 3=Sun, 4=Mon, 5=Tue, 6=Wed
+    if (dayOfWeek >= 5) {
+      // Tuesday or later — next week is open for picks
+      return Math.min(currentWeek + 1, 17);
+    }
+    // Thu-Mon: current week is in progress / locked
+    return Math.min(currentWeek, 17);
+  }
+
+  function getWeekStatus(week) {
+    const nflWeek = getCurrentNFLWeek();
+    if (week < nflWeek) return 'past';    // Already played — locked
+    if (week === nflWeek) return 'active'; // Current — open for picks
+    return 'future';                       // Not yet — grayed out
+  }
+
+  function getWeekDeadline(week) {
+    // Thursday kickoff for this week (5pm PT)
+    const deadline = new Date(WEEK1_THURSDAY.getTime() + (week - 1) * 7 * 86400000);
+    return deadline;
+  }
+
   const SCHEDULE = {
     1:  { tnf: { a: '49ers', b: 'Rams' }, snf: { a: 'Cowboys', b: 'Giants' }, mnf: { a: 'Broncos', b: 'Chiefs' } },
     2:  { tnf: { a: 'Lions', b: 'Bills' }, snf: { a: 'Colts', b: 'Chiefs' }, mnf: { a: 'Giants', b: 'Rams' } },
@@ -386,17 +419,18 @@ const App = (() => {
     }
     const el = document.getElementById('active-week-info');
     if (!el) return;
-    const urlData = parseURL();
-    let weekData;
-    if (urlData && urlData.matchups) {
-      weekData = urlData;
-    } else {
-      const weekKeys = Object.keys(state.weeks).sort((a, b) => b - a);
-      if (weekKeys.length > 0) weekData = state.weeks[weekKeys[0]];
-    }
+    const activeWeek = getCurrentNFLWeek();
+    const weekData = state.weeks[activeWeek];
     if (weekData && weekData.matchups) {
+      const deadline = getWeekDeadline(activeWeek);
+      const now = new Date();
+      const isLocked = now >= deadline;
+      const deadlineStr = deadline.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
       let html = `<div style="text-align:center;margin-bottom:12px;padding:8px;border-radius:8px;background:rgba(0,200,150,0.06)">`;
-      html += `<div style="font-size:0.7rem;font-weight:700;color:var(--accent);letter-spacing:1px;margin-bottom:4px">WEEK ${weekData.week} ACTIVE</div>`;
+      html += `<div style="font-size:0.7rem;font-weight:700;color:var(--accent);letter-spacing:1px;margin-bottom:4px">WEEK ${activeWeek}${isLocked ? ' — LOCKED' : ' — OPEN'}</div>`;
+      if (!isLocked) {
+        html += `<div style="font-size:0.65rem;color:var(--text-dim);margin-bottom:4px">Picks lock ${deadlineStr} at kickoff</div>`;
+      }
       html += weekData.matchups.map(m => `<span style="font-size:0.8rem;color:var(--text-dim)">${teamBadge(m.a)} vs ${teamBadge(m.b)}${m.isSuper ? ' ⭐' : ''}</span>`).join('<br>');
       html += `</div>`;
       el.innerHTML = html;
@@ -651,15 +685,19 @@ const App = (() => {
     currentPlayer = name;
     localStorage.setItem('marjitos_player_name', name);
 
-    // Get week data: URL hash first (direct link), otherwise latest week from Firebase/state
-    const urlData = parseURL();
-    let weekData;
-    if (urlData && urlData.matchups) {
-      weekData = urlData;
-    } else {
-      const weekKeys = Object.keys(state.weeks).sort((a, b) => b - a);
-      if (weekKeys.length === 0) { alert('No matchups set up yet. Check back soon.'); return; }
-      weekData = state.weeks[weekKeys[0]];
+    // Determine the active NFL week
+    const activeWeek = getCurrentNFLWeek();
+    let weekData = state.weeks[activeWeek];
+
+    if (!weekData) {
+      // Try URL hash as fallback
+      const urlData = parseURL();
+      if (urlData && urlData.matchups) {
+        weekData = urlData;
+      } else {
+        alert('No matchups available for the current week. Check back soon.');
+        return;
+      }
     }
 
     // Check Firebase directly for existing picks (most reliable)
@@ -739,8 +777,17 @@ const App = (() => {
   }
 
   function submitPicks() {
-    const data = parseURL() || state.weeks[Object.keys(state.weeks).sort((a, b) => b - a)[0]];
+    const activeWeek = getCurrentNFLWeek();
+    const data = state.weeks[activeWeek] || parseURL();
+    if (!data) return;
     const week = data.week;
+
+    // Check deadline — can't submit after Thursday kickoff
+    const deadline = getWeekDeadline(week);
+    if (new Date() >= deadline) {
+      alert('Picks are locked — the games have already started for this week.');
+      return;
+    }
 
     if (!state.players[currentPlayer]) state.players[currentPlayer] = {};
     const pickData = { picks: { ...currentPicks } };
@@ -1389,9 +1436,8 @@ const App = (() => {
     });
     const pct = total > 0 ? Math.round((correct / total) * 100) : 0;
 
-    // Find the latest (current) week
-    const allWeeks = Object.keys(state.weeks).sort((a, b) => Number(b) - Number(a));
-    const currentWeek = allWeeks.length > 0 ? allWeeks[0] : null;
+    // Find the active NFL week (time-based)
+    const currentWeek = getCurrentNFLWeek();
 
     let html = '';
 
@@ -1401,15 +1447,24 @@ const App = (() => {
       const cpw = playerData[currentWeek];
       const hasPicks = cpw && cpw.picks && Object.keys(cpw.picks).length > 0;
       const cwr = state.results[currentWeek] || {};
+      const deadline = getWeekDeadline(currentWeek);
+      const now = new Date();
+      const isLocked = now >= deadline && !hasPicks; // Past deadline with no picks = missed
+      const deadlineStr = deadline.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
 
       html += `<div class="current-week-card">`;
       html += `<div class="cw-header"><span class="cw-label">WEEK ${currentWeek}</span>`;
       if (hasPicks) {
         html += `<span class="badge-done">LOCKED IN</span>`;
+      } else if (isLocked) {
+        html += `<span style="font-size:0.65rem;font-weight:700;padding:2px 8px;border-radius:6px;background:rgba(255,68,102,0.15);color:var(--danger)">MISSED</span>`;
       } else {
         html += `<span class="badge-pending">NEEDS PICKS</span>`;
       }
       html += `</div>`;
+      if (!hasPicks && !isLocked) {
+        html += `<p style="font-size:0.7rem;color:var(--text-dim);text-align:center;margin-bottom:6px">Picks lock ${deadlineStr} at kickoff</p>`;
+      }
 
       if (hasPicks && cwd) {
         cwd.matchups.forEach((m, i) => {
@@ -1426,9 +1481,11 @@ const App = (() => {
           html += `<div class="cw-pick"><span class="${cls}">${icon} ${teamBadge(pickedName)}</span>`;
           html += `<span class="cw-matchup">${m.a} vs ${m.b}${superTag}</span></div>`;
         });
+      } else if (isLocked) {
+        html += `<p class="cw-prompt" style="color:var(--danger)">Picks window closed for this week.</p>`;
       } else {
         html += `<p class="cw-prompt">Picks not in yet — tap below to make your picks.</p>`;
-        html += `<button class="btn primary" style="margin-top:8px" onclick="App.showScreen('screen-vote')">Make Picks</button>`;
+        html += `<button class="btn primary" style="margin-top:8px" onclick="App.enterPlayer()">Make Picks</button>`;
       }
       html += `</div>`;
     }
