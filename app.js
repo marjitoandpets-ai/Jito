@@ -293,11 +293,9 @@ const App = (() => {
     const activeScreen = document.querySelector('.screen.active');
     if (!activeScreen) return;
     const id = activeScreen.id;
-    if (id === 'screen-dashboard') { renderDashboard(); updateSyncIndicator(); }
     if (id === 'screen-leaderboard') renderLeaderboard();
     if (id === 'screen-results') loadResultsWeek();
-    if (id === 'screen-commissioner') { if (!_commWeekOverride) initCommissioner(); updateLiveFeed(); }
-    if (id === 'screen-all-picks') renderAllPicks();
+    if (id === 'screen-commissioner') { if (!_commWeekOverride) initCommissioner(); updateLiveFeed(); renderCommPlayers(); renderCommResults(); updateSyncIndicator(); }
     if (id === 'screen-confirm') {
       const data = parseURL() || state.weeks[Object.keys(state.weeks).sort((a, b) => b - a)[0]];
       if (data) renderPickCounter(data);
@@ -323,7 +321,7 @@ const App = (() => {
     });
   }
 
-  const APP_VERSION = '52';
+  const APP_VERSION = '53';
 
   function updateLoggedInBar() {
     const bar = document.getElementById('logged-in-bar');
@@ -342,7 +340,7 @@ const App = (() => {
     }
   }
 
-  const ADMIN_SCREENS = ['screen-results', 'screen-commissioner', 'screen-dashboard', 'screen-all-picks'];
+  const ADMIN_SCREENS = ['screen-results', 'screen-commissioner'];
 
   function goHome() {
     if (currentPlayer) {
@@ -379,12 +377,17 @@ const App = (() => {
         initCommissioner(_commWeekOverride);
       }
       updateLiveFeed();
+      renderCommPlayers();
+      renderCommResults();
+      updateSyncIndicator();
     }
     if (id === 'screen-leaderboard') renderLeaderboard();
     if (id === 'screen-my-stats') renderMyStats();
     if (id === 'screen-results') loadResultsWeek();
-    if (id === 'screen-dashboard') renderDashboard();
-    if (id === 'screen-all-picks') renderAllPicks();
+    // Redirect old screens to commissioner
+    if (id === 'screen-dashboard' || id === 'screen-all-picks') {
+      showScreen('screen-commissioner'); return;
+    }
   }
 
   // --- URL Hash Encoding ---
@@ -552,6 +555,8 @@ const App = (() => {
       document.getElementById('share-link-box').classList.add('hidden');
 
       updateLiveFeed();
+      renderCommPlayers();
+      renderCommResults();
       return;
     }
 
@@ -678,6 +683,8 @@ const App = (() => {
 
   function onCommWeekChange() {
     initCommissioner();
+    renderCommPlayers();
+    renderCommResults();
   }
 
   function browseWeek(direction) {
@@ -689,6 +696,8 @@ const App = (() => {
     window.location.hash = '';
     _commWeekOverride = next;
     initCommissioner(next);
+    renderCommPlayers();
+    renderCommResults();
     setTimeout(() => { _commWeekOverride = null; }, 3000);
   }
 
@@ -1383,6 +1392,133 @@ const App = (() => {
     listEl.innerHTML = html;
   }
 
+  // --- Commissioner Inline: Players & Picks ---
+  function renderCommPlayers() {
+    const container = document.getElementById('comm-players-section');
+    if (!container) return;
+    const weekEl = document.getElementById('comm-week');
+    const week = weekEl ? (parseInt(weekEl.value) || 1) : 1;
+    const weekData = state.weeks[week];
+    const allPlayers = Object.keys(state.players).sort();
+
+    if (allPlayers.length === 0) {
+      container.innerHTML = '<div class="divider-text" style="margin-top:12px">players</div><p style="color:var(--text-dim);text-align:center;font-size:0.8rem">No players yet</p>';
+      return;
+    }
+
+    const pickedPlayers = allPlayers.filter(p => {
+      const pw = state.players[p] && state.players[p][week];
+      return pw && pw.picks && Object.keys(pw.picks).length > 0;
+    });
+
+    let h = `<div class="divider-text" style="margin-top:12px">players — ${pickedPlayers.length}/${allPlayers.length} picked</div>`;
+
+    allPlayers.forEach(p => {
+      const pw = state.players[p] && state.players[p][week];
+      const hasPicks = pw && pw.picks && Object.keys(pw.picks).length > 0;
+      const escapedName = p.replace(/'/g, "\\'");
+
+      h += `<div class="comm-player-card" onclick="this.classList.toggle('open')">`;
+      h += `<div class="comm-player-header">`;
+      h += `<span class="comm-player-name">${esc(p)}</span>`;
+      h += hasPicks
+        ? `<span class="badge-done" style="font-size:0.6rem;padding:2px 6px">W${week} ✓</span>`
+        : `<span class="badge-pending" style="font-size:0.6rem;padding:2px 6px">No picks</span>`;
+      h += `<span class="cw-chevron">▸</span>`;
+      h += `</div>`;
+
+      // Collapsible detail
+      h += `<div class="comm-player-body" onclick="event.stopPropagation()">`;
+      if (hasPicks && weekData && weekData.matchups) {
+        weekData.matchups.forEach((m, i) => {
+          const pick = (pw.picks || {})[i];
+          const pickedName = pick === 'a' ? m.a : pick === 'b' ? m.b : '?';
+          const label = m.isSuper ? 'SUPER' : (i === 0 ? 'TNF' : i === 1 ? 'SNF' : 'MNF');
+          h += `<div class="comm-pick-row">`;
+          h += `<span class="comm-pick-label">${label}</span>`;
+          h += `<span class="comm-pick-matchup">${teamBadge(m.a)} vs ${teamBadge(m.b)}</span>`;
+          h += `<span class="comm-pick-choice">${teamBadge(pickedName)}</span>`;
+          h += `</div>`;
+        });
+        h += `<button class="btn ghost" style="width:100%;padding:4px;font-size:0.65rem;margin-top:6px;color:var(--danger)" onclick="App.resetPlayerPicks('${escapedName}',${week})">Reset Week ${week} Picks</button>`;
+      } else {
+        h += `<p style="font-size:0.75rem;color:var(--text-dim);margin:4px 0">No picks for Week ${week}</p>`;
+      }
+
+      // Show all weeks summary
+      const activeWeeks = Object.keys(state.weeks).sort((a, b) => a - b);
+      if (activeWeeks.length > 1) {
+        h += `<div style="margin-top:6px;padding-top:6px;border-top:1px solid var(--card-border)">`;
+        h += `<div style="font-size:0.6rem;color:var(--text-dim);margin-bottom:3px">All weeks:</div>`;
+        h += `<div style="display:flex;flex-wrap:wrap;gap:3px">`;
+        activeWeeks.forEach(w => {
+          const pWeek = state.players[p] && state.players[p][w];
+          const wHas = pWeek && pWeek.picks && Object.keys(pWeek.picks).length > 0;
+          if (wHas) {
+            h += `<span style="font-size:0.6rem;background:rgba(0,200,150,0.12);color:var(--accent);padding:1px 5px;border-radius:3px">W${w}</span>`;
+          } else {
+            h += `<span style="font-size:0.6rem;color:var(--text-dim);padding:1px 5px">W${w}</span>`;
+          }
+        });
+        h += `</div></div>`;
+      }
+
+      h += `<button class="btn ghost" style="width:100%;padding:4px;font-size:0.65rem;margin-top:6px;color:var(--danger)" onclick="App.removePlayer('${escapedName}')">Remove Player</button>`;
+      h += `</div></div>`;
+    });
+
+    container.innerHTML = h;
+  }
+
+  // --- Commissioner Inline: Enter Results ---
+  function renderCommResults() {
+    const container = document.getElementById('comm-results-section');
+    if (!container) return;
+    const weekEl = document.getElementById('comm-week');
+    const week = weekEl ? (parseInt(weekEl.value) || 1) : 1;
+    const weekData = state.weeks[week];
+
+    if (!weekData || !weekData.matchups) {
+      container.innerHTML = '';
+      return;
+    }
+
+    const wr = state.results[week] || {};
+    const hasResults = Object.keys(wr).length > 0;
+
+    let h = `<div class="divider-text" style="margin-top:12px">results${hasResults ? ' ✓' : ''}</div>`;
+    weekData.matchups.forEach((m, i) => {
+      const existing = wr[i];
+      h += `<div style="display:flex;align-items:center;gap:6px;margin-bottom:6px;font-size:0.8rem">`;
+      h += `<span style="flex:1">${m.isSuper ? '<span class="super-badge" style="font-size:0.55rem">SUPER</span> ' : ''}${teamBadge(m.a)} vs ${teamBadge(m.b)}</span>`;
+      h += `<select id="comm-result-${i}" style="background:var(--card);color:var(--text);border:1px solid var(--card-border);border-radius:4px;padding:4px 6px;font-size:0.75rem">`;
+      h += `<option value="">Winner?</option>`;
+      h += `<option value="a"${existing === 'a' ? ' selected' : ''}>${m.a}</option>`;
+      h += `<option value="b"${existing === 'b' ? ' selected' : ''}>${m.b}</option>`;
+      h += `</select></div>`;
+    });
+    h += `<button class="btn primary" style="font-size:0.8rem;padding:8px" onclick="App.saveCommResults()">Save Results</button>`;
+
+    container.innerHTML = h;
+  }
+
+  function saveCommResults() {
+    const weekEl = document.getElementById('comm-week');
+    const week = weekEl ? (parseInt(weekEl.value) || 1) : 1;
+    const data = state.weeks[week];
+    if (!data) return;
+
+    if (!state.results[week]) state.results[week] = {};
+    data.matchups.forEach((m, i) => {
+      const el = document.getElementById('comm-result-' + i);
+      if (el && el.value) state.results[week][i] = el.value;
+    });
+
+    save();
+    alert('Winners saved for Week ' + week);
+    renderCommResults();
+  }
+
   // --- All Picks Screen ---
   function showAllPicks() {
     const weekVal = document.getElementById('comm-week').value;
@@ -1895,6 +2031,6 @@ const App = (() => {
     triggerImport, handleImport, importFullData, handleFullImport,
     showAllPicks, renderAllPicks, resetWeekSetup, onCommWeekChange,
     editWeekSetup, nextWeek, resetPlayerPicks, resetWeekPicks, removePlayer, browseWeek, resetAllData, refreshSchedule,
-    setLBWeek, toggleWeek, renderPlayerDetail, syncOnce
+    setLBWeek, toggleWeek, renderPlayerDetail, syncOnce, renderCommPlayers, renderCommResults, saveCommResults
   };
 })();

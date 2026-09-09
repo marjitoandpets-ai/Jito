@@ -6,11 +6,11 @@
   <title>Marjito's Maniacal Matchup Mayhem Madness</title>
   <link rel="preconnect" href="https://www.gstatic.com" crossorigin>
   <link rel="preconnect" href="https://marjitosmatchupmadness-default-rtdb.firebaseio.com" crossorigin>
-  <link rel="stylesheet" href="./style.css?v=52">
+  <link rel="stylesheet" href="./style.css?v=53">
   <script>
     // Force-refresh on version mismatch (defeats GitHub Pages caching)
     (function() {
-      var APP_VERSION = '52';
+      var APP_VERSION = '53';
       var stored = localStorage.getItem('marjitos_app_version');
       if (stored && stored !== APP_VERSION) {
         localStorage.setItem('marjitos_app_version', APP_VERSION);
@@ -50,10 +50,17 @@
       </div>
     </div>
 
-    <!-- Commissioner: Set Up Matchups -->
+    <!-- Commissioner: Unified View -->
     <div id="screen-commissioner" class="screen">
       <div class="card glass">
-        <h2>Set Up This Week</h2>
+        <h2>Commissioner Mode</h2>
+        <div style="display:flex;justify-content:space-between;align-items:center;font-size:0.65rem;color:var(--text-dim);margin-bottom:8px;padding:4px 0;border-bottom:1px solid var(--card-border)">
+          <span id="sync-status" style="color:var(--accent)">Connecting...</span>
+          <span id="sync-info"></span>
+          <button class="btn ghost" style="width:auto;padding:2px 8px;font-size:0.65rem;margin:0" onclick="App.syncOnce()">↻ Sync</button>
+        </div>
+
+        <!-- Week Selector -->
         <div class="week-nav">
           <button class="btn ghost week-nav-btn" onclick="App.browseWeek(-1)">◀</button>
           <div class="week-nav-label">
@@ -63,6 +70,7 @@
           <button class="btn ghost week-nav-btn" onclick="App.browseWeek(1)">▶</button>
         </div>
 
+        <!-- Matchups Section -->
         <div class="matchup-setup" id="matchup-setups"></div>
         <button class="btn primary" id="confirm-week-btn" onclick="App.generateLink()">Confirm Week</button>
         <button class="btn ghost" style="font-size:0.75rem;margin-top:0" onclick="App.refreshSchedule()">↻ Refresh Schedule from NFL</button>
@@ -74,17 +82,27 @@
           <button class="btn primary" style="margin-top:8px" onclick="App.commishMakePicks()">Make My Picks</button>
         </div>
 
-        <!-- Live picks feed -->
-        <div id="live-picks-feed" class="hidden">
-          <div class="divider-text">live picks</div>
-          <div id="live-picks-list"></div>
-        </div>
+        <!-- Players & Picks Section (built by JS) -->
+        <div id="comm-players-section"></div>
 
-        <div class="divider-text">manage</div>
-        <button class="btn secondary" onclick="App.showScreen('screen-dashboard')">Commissioner Dashboard</button>
-        <button class="btn secondary" onclick="App.showAllPicks()">View All Picks</button>
-        <button class="btn ghost" onclick="App.showScreen('screen-results')">Enter Results</button>
-        <button class="btn ghost" onclick="App.showScreen('screen-landing')">Back</button>
+        <!-- Enter Results Section (built by JS) -->
+        <div id="comm-results-section"></div>
+
+        <!-- Admin Tools (collapsible) -->
+        <div class="divider-text" style="margin-top:16px">admin tools</div>
+        <div id="comm-admin-tools">
+          <button class="btn secondary" onclick="App.showScreen('screen-leaderboard')">View Leaderboard</button>
+          <div class="divider-text">data</div>
+          <button class="btn ghost" onclick="App.exportData()">Export All Data (JSON)</button>
+          <button class="btn ghost" onclick="App.triggerImport()">Import Player Picks</button>
+          <input type="file" id="import-file" accept=".json" multiple style="display:none" onchange="App.handleImport(this.files)">
+          <div id="import-status" class="hidden"></div>
+          <button class="btn ghost" onclick="App.importFullData()">Import Full Backup</button>
+          <input type="file" id="import-full-file" accept=".json" style="display:none" onchange="App.handleFullImport(this.files)">
+          <div class="divider-text" style="color:var(--danger)">danger zone</div>
+          <button class="btn ghost" style="color:var(--danger);border-color:var(--danger)" onclick="App.resetAllData()">Reset All Data</button>
+        </div>
+        <button class="btn ghost" style="margin-top:12px" onclick="App.showScreen('screen-landing')">Back</button>
       </div>
     </div>
 
@@ -149,50 +167,6 @@
       </div>
     </div>
 
-    <!-- Commissioner Dashboard -->
-    <div id="screen-dashboard" class="screen">
-      <div class="card glass">
-        <h2>Commissioner Dashboard</h2>
-        <div style="display:flex;justify-content:space-between;align-items:center;font-size:0.65rem;color:var(--text-dim);margin-bottom:8px;padding:4px 0;border-bottom:1px solid var(--card-border)">
-          <span id="sync-status" style="color:var(--accent)">Connecting...</span>
-          <span id="sync-info"></span>
-          <button class="btn ghost" style="width:auto;padding:2px 8px;font-size:0.65rem;margin:0" onclick="App.syncOnce()">↻ Sync</button>
-        </div>
-
-        <!-- Standings Overview -->
-        <div class="dash-section">
-          <h3>Current Standings</h3>
-          <div id="dash-standings"></div>
-        </div>
-
-        <!-- Week-by-Week History -->
-        <div class="dash-section">
-          <h3>Week-by-Week History</h3>
-          <div id="dash-history"></div>
-        </div>
-
-        <!-- Manage Players -->
-        <div class="dash-section">
-          <h3>Manage Players</h3>
-          <div id="dash-players"></div>
-        </div>
-
-        <div class="divider-text">actions</div>
-        <button class="btn secondary" onclick="App.showScreen('screen-results')">Edit Results / Picks</button>
-        <button class="btn secondary" onclick="App.showScreen('screen-commissioner')">Set Up New Week</button>
-        <div class="divider-text">data</div>
-        <button class="btn secondary" onclick="App.triggerImport()">Import Player Picks</button>
-        <input type="file" id="import-file" accept=".json" multiple style="display:none" onchange="App.handleImport(this.files)">
-        <div id="import-status" class="hidden"></div>
-        <button class="btn ghost" onclick="App.exportData()">Export All Data (JSON)</button>
-        <button class="btn ghost" onclick="App.importFullData()">Import Full Backup</button>
-        <input type="file" id="import-full-file" accept=".json" style="display:none" onchange="App.handleFullImport(this.files)">
-        <div class="divider-text" style="color:var(--danger)">danger zone</div>
-        <button class="btn ghost" style="color:var(--danger);border-color:var(--danger)" onclick="App.resetAllData()">Reset All Data</button>
-        <button class="btn ghost" onclick="App.showScreen('screen-landing')">Back</button>
-      </div>
-    </div>
-
     <!-- Leaderboard -->
     <div id="screen-leaderboard" class="screen">
       <div class="card glass">
@@ -203,21 +177,11 @@
       </div>
     </div>
 
-    <!-- All Picks View -->
-    <div id="screen-all-picks" class="screen">
-      <div class="card glass">
-        <h2>All Picks</h2>
-        <label>Week</label>
-        <input type="number" id="all-picks-week" min="1" max="18" value="1" onchange="App.renderAllPicks()">
-        <div id="all-picks-container"></div>
-        <button class="btn ghost" onclick="App.showScreen('screen-commissioner')">Back</button>
-      </div>
-    </div>
   </div>
 
   <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-auth-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-database-compat.js"></script>
-  <script src="./app.js?v=52"></script>
+  <script src="./app.js?v=53"></script>
 </body>
 </html>

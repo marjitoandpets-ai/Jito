@@ -525,6 +525,49 @@ button, .btn, .lb-tab, .rp-reset, .admin-badge {
   padding-top: 8px;
 }
 
+/* Commissioner player cards */
+.comm-player-card {
+  margin-bottom: 6px; padding: 10px; border-radius: 8px;
+  background: rgba(255,255,255,0.03); cursor: pointer;
+  border: 1px solid var(--card-border);
+  -webkit-user-select: none; user-select: none;
+  touch-action: manipulation;
+  min-height: 44px;
+}
+.comm-player-header {
+  display: flex; align-items: center; gap: 8px;
+}
+.comm-player-name {
+  flex: 1; font-size: 0.85rem; font-weight: 600;
+}
+.comm-player-body {
+  max-height: 0; overflow: hidden;
+  transition: max-height 0.25s ease, padding 0.25s ease;
+  padding-top: 0;
+}
+.comm-player-card.open .comm-player-body {
+  max-height: 600px; padding-top: 8px;
+}
+.comm-player-card.open .cw-chevron {
+  transform: rotate(90deg);
+}
+.comm-pick-row {
+  display: flex; align-items: center; gap: 6px;
+  padding: 4px 0; font-size: 0.75rem;
+  border-bottom: 1px solid rgba(255,255,255,0.04);
+}
+.comm-pick-label {
+  width: 42px; font-size: 0.6rem; font-weight: 700;
+  color: var(--text-dim); text-transform: uppercase;
+  flex-shrink: 0;
+}
+.comm-pick-matchup {
+  flex: 1; color: var(--text-dim);
+}
+.comm-pick-choice {
+  font-weight: 700;
+}
+
 .current-week-card {
   margin-bottom: 16px; padding: 14px; border-radius: 12px;
   background: rgba(0,200,150,0.06);
