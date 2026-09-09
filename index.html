@@ -6,11 +6,11 @@
   <title>Marjito's Maniacal Matchup Mayhem Madness</title>
   <link rel="preconnect" href="https://www.gstatic.com" crossorigin>
   <link rel="preconnect" href="https://marjitosmatchupmadness-default-rtdb.firebaseio.com" crossorigin>
-  <link rel="stylesheet" href="./style.css?v=49">
+  <link rel="stylesheet" href="./style.css?v=50">
   <script>
     // Force-refresh on version mismatch (defeats GitHub Pages caching)
     (function() {
-      var APP_VERSION = '49';
+      var APP_VERSION = '50';
       var stored = localStorage.getItem('marjitos_app_version');
       if (stored && stored !== APP_VERSION) {
         localStorage.setItem('marjitos_app_version', APP_VERSION);
@@ -152,6 +152,11 @@
     <div id="screen-dashboard" class="screen">
       <div class="card glass">
         <h2>Commissioner Dashboard</h2>
+        <div style="display:flex;justify-content:space-between;align-items:center;font-size:0.65rem;color:var(--text-dim);margin-bottom:8px;padding:4px 0;border-bottom:1px solid var(--card-border)">
+          <span id="sync-status" style="color:var(--accent)">Connecting...</span>
+          <span id="sync-info"></span>
+          <button class="btn ghost" style="width:auto;padding:2px 8px;font-size:0.65rem;margin:0" onclick="App.syncOnce()">↻ Sync</button>
+        </div>
 
         <!-- Standings Overview -->
         <div class="dash-section">
@@ -211,6 +216,6 @@
 
   <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-database-compat.js"></script>
-  <script src="./app.js?v=49"></script>
+  <script src="./app.js?v=50"></script>
 </body>
 </html>

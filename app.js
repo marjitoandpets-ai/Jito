@@ -204,11 +204,23 @@ const App = (() => {
 
   // --- Firebase Real-time Listener ---
   let _renderTimer = null;
+  let _lastSyncTime = 0;
+  let _syncCount = 0;
 
   function initFirebase() {
+    // Monitor connection state
+    db.ref('.info/connected').on('value', snap => {
+      const el = document.getElementById('sync-status');
+      if (el) el.textContent = snap.val() ? 'Connected' : 'Disconnected';
+    });
+
     db.ref('state').on('value', (snapshot) => {
       const remote = snapshot.val();
       if (remote) {
+        const remotePlayerCount = Object.keys(remote.players || {}).length;
+        _syncCount++;
+        _lastSyncTime = Date.now();
+        console.log('[Firebase sync #' + _syncCount + '] ' + remotePlayerCount + ' players, ' + Object.keys(remote.weeks || {}).length + ' weeks');
         state = {
           players: remote.players || {},
           weeks: remote.weeks || {},
@@ -242,14 +254,24 @@ const App = (() => {
     db.ref('state').once('value').then(snap => {
       const remote = snap.val();
       if (remote) {
+        const pc = Object.keys(remote.players || {}).length;
+        console.log('[syncOnce] Got ' + pc + ' players from Firebase');
         state = { players: remote.players || {}, weeks: remote.weeks || {}, results: remote.results || {} };
         ensureAllWeeksLoaded();
         saveLocal();
         firebaseReady = true;
-        // Re-render current screen
         refreshActiveScreen();
+        updateSyncIndicator();
       }
-    }).catch(() => {});
+    }).catch(err => { console.warn('[syncOnce] failed:', err); });
+  }
+
+  function updateSyncIndicator() {
+    const el = document.getElementById('sync-info');
+    if (!el) return;
+    const playerCount = Object.keys(state.players).length;
+    const ago = _lastSyncTime ? Math.round((Date.now() - _lastSyncTime) / 1000) + 's ago' : 'never';
+    el.textContent = playerCount + ' players synced | last: ' + ago + ' | pulls: ' + _syncCount;
   }
 
   // Re-render whatever screen is active (shared by listener + sync helpers)
@@ -257,7 +279,7 @@ const App = (() => {
     const activeScreen = document.querySelector('.screen.active');
     if (!activeScreen) return;
     const id = activeScreen.id;
-    if (id === 'screen-dashboard') renderDashboard();
+    if (id === 'screen-dashboard') { renderDashboard(); updateSyncIndicator(); }
     if (id === 'screen-leaderboard') renderLeaderboard();
     if (id === 'screen-results') loadResultsWeek();
     if (id === 'screen-commissioner') { if (!_commWeekOverride) initCommissioner(); updateLiveFeed(); }
@@ -1234,41 +1256,67 @@ const App = (() => {
     });
     historyEl.innerHTML = hHtml;
 
-    // Manage Players section
+    // Manage Players section — dropdown selector + detail panel
     const playersEl = document.getElementById('dash-players');
     const allPlayers = Object.keys(state.players).sort();
     const activeWeeks = Object.keys(state.weeks).sort((a, b) => a - b);
     if (allPlayers.length === 0) {
       playersEl.innerHTML = '<p style="color:var(--text-dim)">No players yet</p>';
     } else {
-      let pH = '';
-      allPlayers.forEach(p => {
-        const escapedName = p.replace(/'/g, "\\'");
-        pH += `<div style="border:1px solid var(--card-border);border-radius:8px;padding:8px 10px;margin-bottom:6px">`;
-        pH += `<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px">`;
-        pH += `<strong style="font-size:0.85rem">${esc(p)}</strong>`;
-        pH += `<button class="btn ghost" style="width:auto;padding:2px 8px;font-size:0.65rem;margin:0;color:var(--danger)" onclick="App.removePlayer('${escapedName}')">Remove</button>`;
-        pH += `</div>`;
-        // Show each week's pick status with reset button
-        if (activeWeeks.length > 0) {
-          pH += '<div style="display:flex;flex-wrap:wrap;gap:4px">';
-          activeWeeks.forEach(w => {
-            const pWeek = state.players[p] && state.players[p][w];
-            const hasPicks = pWeek && pWeek.picks && Object.keys(pWeek.picks).length > 0;
-            if (hasPicks) {
-              pH += `<span style="display:inline-flex;align-items:center;gap:3px;font-size:0.65rem;background:rgba(0,200,150,0.12);color:var(--accent);padding:2px 6px;border-radius:4px">`;
-              pH += `W${w} ✓ <a href="#" onclick="App.resetPlayerPicks('${escapedName}',${w});return false" style="color:var(--danger);text-decoration:none;font-weight:700" title="Reset Week ${w}">✕</a>`;
-              pH += `</span>`;
-            } else {
-              pH += `<span style="font-size:0.65rem;color:var(--text-dim);padding:2px 6px">W${w} —</span>`;
-            }
-          });
-          pH += '</div>';
-        }
-        pH += '</div>';
+      let pH = '<div class="player-manage-wrap">';
+      pH += `<div style="display:flex;align-items:center;gap:8px;margin-bottom:8px">`;
+      pH += `<label style="font-size:0.8rem;color:var(--text-dim);white-space:nowrap">Player (${allPlayers.length})</label>`;
+      pH += `<select id="manage-player-select" onchange="App.renderPlayerDetail()" style="flex:1;background:var(--card);color:var(--text);border:1px solid var(--card-border);border-radius:6px;padding:6px 8px;font-size:0.85rem">`;
+      allPlayers.forEach((p, i) => {
+        const pickedWeeks = activeWeeks.filter(w => {
+          const pw = state.players[p] && state.players[p][w];
+          return pw && pw.picks && Object.keys(pw.picks).length > 0;
+        });
+        pH += `<option value="${esc(p)}"${i === 0 ? ' selected' : ''}>${esc(p)} — ${pickedWeeks.length} week${pickedWeeks.length !== 1 ? 's' : ''} picked</option>`;
       });
+      pH += `</select></div>`;
+      pH += `<div id="manage-player-detail"></div>`;
+      pH += '</div>';
       playersEl.innerHTML = pH;
+      renderPlayerDetail();
     }
+  }
+
+  function renderPlayerDetail() {
+    const sel = document.getElementById('manage-player-select');
+    const detailEl = document.getElementById('manage-player-detail');
+    if (!sel || !detailEl) return;
+    const name = sel.value;
+    if (!name) { detailEl.innerHTML = ''; return; }
+
+    const activeWeeks = Object.keys(state.weeks).sort((a, b) => a - b);
+    const escapedName = name.replace(/'/g, "\\'");
+
+    let h = `<div style="border:1px solid var(--card-border);border-radius:8px;padding:10px;margin-top:4px">`;
+    h += `<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">`;
+    h += `<strong style="font-size:0.9rem">${esc(name)}</strong>`;
+    h += `<button class="btn ghost" style="width:auto;padding:2px 10px;font-size:0.7rem;margin:0;color:var(--danger)" onclick="App.removePlayer('${escapedName}')">Remove Player</button>`;
+    h += `</div>`;
+
+    if (activeWeeks.length > 0) {
+      h += '<div style="display:flex;flex-wrap:wrap;gap:4px">';
+      activeWeeks.forEach(w => {
+        const pWeek = state.players[name] && state.players[name][w];
+        const hasPicks = pWeek && pWeek.picks && Object.keys(pWeek.picks).length > 0;
+        if (hasPicks) {
+          h += `<span style="display:inline-flex;align-items:center;gap:3px;font-size:0.7rem;background:rgba(0,200,150,0.12);color:var(--accent);padding:3px 8px;border-radius:4px">`;
+          h += `W${w} ✓ <a href="#" onclick="App.resetPlayerPicks('${escapedName}',${w});return false" style="color:var(--danger);text-decoration:none;font-weight:700" title="Reset Week ${w}">✕</a>`;
+          h += `</span>`;
+        } else {
+          h += `<span style="font-size:0.7rem;color:var(--text-dim);padding:3px 8px">W${w} —</span>`;
+        }
+      });
+      h += '</div>';
+    } else {
+      h += '<p style="font-size:0.75rem;color:var(--text-dim);margin:0">No weeks set up yet</p>';
+    }
+    h += '</div>';
+    detailEl.innerHTML = h;
   }
 
   // --- Live Picks Feed (commissioner screen) ---
@@ -1823,6 +1871,6 @@ const App = (() => {
     triggerImport, handleImport, importFullData, handleFullImport,
     showAllPicks, renderAllPicks, resetWeekSetup, onCommWeekChange,
     editWeekSetup, nextWeek, resetPlayerPicks, resetWeekPicks, removePlayer, browseWeek, resetAllData, refreshSchedule,
-    setLBWeek, toggleWeek
+    setLBWeek, toggleWeek, renderPlayerDetail, syncOnce
   };
 })();
